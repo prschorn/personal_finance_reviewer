@@ -157,4 +157,30 @@ describe('mapBill', () => {
     expect(row.minimumPaymentCents).toBe(34567);
     expect(row.accountId).toBe('acc-card');
   });
+
+  // Pluggy sends a full ISO timestamp here, unlike the plain dates elsewhere.
+  // Stored raw it renders as "03T00:00:00.000Z/09/2026".
+  it('normalizes an ISO due date to a plain local date', () => {
+    expect(mapBill({ id: 'b1', dueDate: '2026-09-03T00:00:00.000Z', totalAmount: 100 }, 'acc').dueDate).toBe('2026-09-03');
+  });
+
+  it('keeps a plain date as it is', () => {
+    expect(mapBill({ id: 'b1', dueDate: '2026-09-03', totalAmount: 100 }, 'acc').dueDate).toBe('2026-09-03');
+  });
+
+  it('tolerates a missing due date', () => {
+    expect(mapBill({ id: 'b1', dueDate: null, totalAmount: 100 }, 'acc').dueDate).toBeNull();
+  });
+});
+
+describe('mapAccount statement dates', () => {
+  it('normalizes ISO statement dates too', () => {
+    const row = mapAccount({
+      id: 'a', itemId: 'i', type: 'CREDIT', subtype: 'CREDIT_CARD', name: null, number: null,
+      balance: 0, currencyCode: 'BRL',
+      creditData: { balanceDueDate: '2026-09-03T00:00:00.000Z', balanceCloseDate: '2026-08-27T00:00:00.000Z' },
+    });
+    expect(row.balanceDueDate).toBe('2026-09-03');
+    expect(row.balanceCloseDate).toBe('2026-08-27');
+  });
 });

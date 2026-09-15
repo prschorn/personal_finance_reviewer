@@ -168,7 +168,7 @@ export function MatrixGrid({ matrix }: { matrix: Matrix }) {
 
       {cell && (
         <DrillDown
-          month={cell.month}
+          url={`/api/cell?month=${encodeURIComponent(cell.month)}&categoryId=${cell.categoryId}`}
           categoryId={cell.categoryId}
           title={cell.name}
           subtitle={cell.label}

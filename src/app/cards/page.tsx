@@ -5,6 +5,7 @@ import { getCardBreakdown, getOpenInstallments } from '../../queries/cards';
 import { getAvailableYears, getDefaultYear } from '../../queries/matrix';
 import { formatBRL } from '../../lib/money';
 import { Money } from '../_components/Money';
+import { CardCategoryBreakdown } from '../_components/CardCategoryBreakdown';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,40 +73,11 @@ export default async function CardsPage({
       ) : (
         <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr]">
           <section>
-            <h2 className="mb-3 font-serif text-xl">Por categoria</h2>
-            <table className="ledger w-full text-[13px]">
-              <tbody>
-                {b.byCategory.map((row) => (
-                  <tr key={row.categoryId ?? row.name}>
-                    <th scope="row" className="w-[40%] py-2 pr-3 text-left font-serif text-[15px] font-normal">
-                      {row.name}
-                    </th>
-                    <td className="py-2 pr-3">
-                      {/* The bar is the comparison; the number is the confirmation. */}
-                      <div className="h-[6px] w-full rounded-full" style={{ background: 'var(--rule)' }}>
-                        <div
-                          className="h-full rounded-full"
-                          style={{ width: `${Math.max(1, row.share * 100)}%`, background: 'var(--accent)' }}
-                        />
-                      </div>
-                    </td>
-                    <td className="tnum w-14 py-2 pr-3 text-right" style={{ color: 'var(--ink-faint)' }}>
-                      {Math.round(row.share * 100)}%
-                    </td>
-                    <td className="w-28 py-2 text-right">
-                      <Money cents={row.cents} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td className="py-2 font-medium">Total</td>
-                  <td /><td />
-                  <td className="py-2 text-right font-medium"><Money cents={b.totalCents} /></td>
-                </tr>
-              </tfoot>
-            </table>
+            <h2 className="mb-1 font-serif text-xl">Por categoria</h2>
+            <p className="mb-3 text-[12px]" style={{ color: 'var(--ink-faint)' }}>
+              Clique numa categoria para ver os lançamentos do cartão por trás dela.
+            </p>
+            <CardCategoryBreakdown breakdown={b} periodLabel={month ? monthLabel(month) : String(year)} />
           </section>
 
           <div className="space-y-10">

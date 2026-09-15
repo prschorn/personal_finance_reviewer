@@ -12,10 +12,12 @@ import { CategoryPicker } from './CategoryPicker';
  * opening a cell is to check a figure against its context, not to leave it.
  */
 export function DrillDown({
-  month, categoryId, title, subtitle, onClose,
+  url, categoryId, title, subtitle, onClose,
 }: {
-  month: string;
-  categoryId: number;
+  /** Endpoint returning DrillDownRow[]. Lets the monthly grid and the cards page share this panel. */
+  url: string;
+  /** Current category, for the picker. Null on the "Sem categoria" row. */
+  categoryId: number | null;
   title: string;
   subtitle: string;
   onClose: () => void;
@@ -31,14 +33,14 @@ export function DrillDown({
   useEffect(() => {
     let alive = true;
     setRows(null);
-    fetch(`/api/cell?month=${encodeURIComponent(month)}&categoryId=${categoryId}`)
+    fetch(url)
       .then((r) => r.json())
-      .then((data: DrillDownRow[]) => alive && setRows(data))
+      .then((data: DrillDownRow[]) => alive && setRows(Array.isArray(data) ? data : []))
       .catch(() => alive && setRows([]));
     return () => {
       alive = false;
     };
-  }, [month, categoryId]);
+  }, [url]);
 
   const total = rows?.reduce((sum, r) => sum + r.cents, 0) ?? 0;
 

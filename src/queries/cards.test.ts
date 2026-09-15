@@ -4,7 +4,7 @@ import { createTestDb, type DB } from '../db/client';
 import { runMigrations } from '../db/migrate';
 import { seedCategories } from '../db/seed-categories';
 import { accounts, bills, categories, items, transactions } from '../db/schema';
-import { getCardBreakdown, getOpenInstallments, listCards } from './cards';
+import { getCardBreakdown, getCardCategoryTransactions, getOpenInstallments, listCards } from './cards';
 import { getMatrix } from './matrix';
 
 function freshDb(): DB {
@@ -218,5 +218,77 @@ describe('consistency with the monthly matrix', () => {
     const matrixMarch = getMatrix(db, 2026).monthTotals[2]!;
 
     expect(cards.totalCents).toBe(matrixMarch);
+  });
+});
+
+describe('card category drill-down', () => {
+  it('lists the card transactions behind a category', () => {
+    const db = freshDb();
+    addTx(db, { accountId: 'nubank', postedOn: '2026-03-01', signedCents: -10000, category: 'Mercado', merchantName: 'Pão de Açúcar' });
+    addTx(db, { accountId: 'itau', postedOn: '2026-03-05', signedCents: -5000, category: 'Mercado', merchantName: 'Hortifruti' });
+    addTx(db, { accountId: 'nubank', postedOn: '2026-03-06', signedCents: -9900, category: 'Restaurante' });
+
+    const rows = getCardCategoryTransactions(db, { year: 2026, categoryId: catId(db, 'Mercado') });
+
+    expect(rows.map((r) => r.merchantName)).toEqual(['Pão de Açúcar', 'Hortifruti']);
+    expect(rows.map((r) => r.cents)).toEqual([10000, 5000]);
+  });
+
+  // If these two disagree, the page is lying about one of them.
+  it('sums to exactly the category row it came from', () => {
+    const db = freshDb();
+    addTx(db, { accountId: 'nubank', postedOn: '2026-03-01', signedCents: -10000, category: 'Mercado' });
+    addTx(db, { accountId: 'itau', postedOn: '2026-05-05', signedCents: -5000, category: 'Mercado' });
+
+    const breakdown = getCardBreakdown(db, { year: 2026 });
+    const row = breakdown.byCategory.find((c) => c.name === 'Mercado')!;
+    const rows = getCardCategoryTransactions(db, { year: 2026, categoryId: catId(db, 'Mercado') });
+
+    expect(rows.reduce((s, r) => s + r.cents, 0)).toBe(row.cents);
+    expect(rows).toHaveLength(row.count);
+  });
+
+  it('excludes bank spending, matching the rest of the page', () => {
+    const db = freshDb();
+    addTx(db, { accountId: 'nubank', postedOn: '2026-03-01', signedCents: -10000, category: 'Mercado' });
+    addTx(db, { accountId: 'acc-bank', postedOn: '2026-03-02', signedCents: -50000, category: 'Mercado' });
+
+    const rows = getCardCategoryTransactions(db, { year: 2026, categoryId: catId(db, 'Mercado') });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.cents).toBe(10000);
+  });
+
+  it('narrows to a single month when the page is showing one', () => {
+    const db = freshDb();
+    addTx(db, { accountId: 'nubank', postedOn: '2026-03-01', signedCents: -10000, category: 'Mercado' });
+    addTx(db, { accountId: 'nubank', postedOn: '2026-04-01', signedCents: -20000, category: 'Mercado' });
+
+    expect(getCardCategoryTransactions(db, { year: 2026, month: '2026-03', categoryId: catId(db, 'Mercado') })).toHaveLength(1);
+    expect(getCardCategoryTransactions(db, { year: 2026, categoryId: catId(db, 'Mercado') })).toHaveLength(2);
+  });
+
+  it('excludes internal movements, matching the rest of the page', () => {
+    const db = freshDb();
+    addTx(db, { accountId: 'nubank', postedOn: '2026-03-20', signedCents: 120000, category: 'Mercado', isInternal: true });
+    expect(getCardCategoryTransactions(db, { year: 2026, categoryId: catId(db, 'Mercado') })).toEqual([]);
+  });
+
+  // The "Sem categoria" row is clickable too, and it is the one you most want to open.
+  it('opens the uncategorized row', () => {
+    const db = freshDb();
+    addTx(db, { accountId: 'nubank', postedOn: '2026-03-01', signedCents: -7700 });
+    addTx(db, { accountId: 'nubank', postedOn: '2026-03-02', signedCents: -1000, category: 'Mercado' });
+
+    const rows = getCardCategoryTransactions(db, { year: 2026, categoryId: null });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.cents).toBe(7700);
+  });
+
+  it('labels installments', () => {
+    const db = freshDb();
+    addTx(db, { accountId: 'nubank', postedOn: '2026-03-01', signedCents: -48990, category: 'Carro', installments: [6, 10] });
+    expect(getCardCategoryTransactions(db, { year: 2026, categoryId: catId(db, 'Carro') })[0]!.installment).toBe('6/10');
   });
 });

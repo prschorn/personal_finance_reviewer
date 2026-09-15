@@ -6,7 +6,9 @@ this machine and renders two views:
 
 - **Mensal** — every category by month for a year, with the transactions behind
   any figure one click away.
-- **Cartões** — credit card spending by category, by card and by bill.
+- **Cartões** — credit card spending by category, by card and by bill. Clicking a
+  category opens the card transactions behind it, for the year or the single month
+  on screen.
 
 Single user, runs locally, nothing leaves this computer.
 
@@ -132,7 +134,7 @@ assumed from the docs:
 
 ```bash
 npm run dev         # http://localhost:3000
-npm test            # 345 tests
+npm test            # 356 tests
 npm run typecheck
 npm run probe       # inspect the live Pluggy API, writes fixtures/
 npm run db:migrate

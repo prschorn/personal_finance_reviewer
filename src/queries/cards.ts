@@ -3,6 +3,7 @@ import type { DB } from '../db/client';
 import { getDb } from '../db/client';
 import { accounts, bills, categories, transactions } from '../db/schema';
 import { monthsOfYear, type Ym } from '../lib/date';
+import type { DrillDownRow } from './matrix';
 
 /**
  * Credit card spending, broken down by category, by card and by bill.
@@ -274,4 +275,59 @@ export function getOpenInstallments(db: DB = getDb()): OpenInstallment[] {
     })
     .filter((r) => r.remainingCount > 0)
     .sort((a, b) => b.remainingCents - a.remainingCents);
+}
+
+/**
+ * The card transactions behind one category row.
+ *
+ * Built from the SAME scope predicate as the breakdown itself, so the rows always
+ * add up to the figure that was clicked. If these two ever diverge, the page is
+ * lying about something.
+ */
+export function getCardCategoryTransactions(
+  db: DB = getDb(),
+  params: CardPeriod & { categoryId: number | null },
+): DrillDownRow[] {
+  const scope = cardScope(params);
+  const categoryPredicate =
+    params.categoryId == null
+      ? isNull(transactions.categoryId)
+      : eq(transactions.categoryId, params.categoryId);
+
+  return db
+    .select({
+      id: transactions.id,
+      fingerprint: transactions.fingerprint,
+      postedOn: transactions.postedOn,
+      description: transactions.description,
+      merchantName: transactions.merchantName,
+      signedCents: transactions.signedCents,
+      accountName: accounts.name,
+      accountType: accounts.type,
+      status: transactions.status,
+      categorySource: transactions.categorySource,
+      ccInstallmentNumber: transactions.ccInstallmentNumber,
+      ccTotalInstallments: transactions.ccTotalInstallments,
+    })
+    .from(transactions)
+    .innerJoin(accounts, eq(accounts.id, transactions.accountId))
+    .where(and(scope, categoryPredicate))
+    .orderBy(asc(transactions.postedOn), desc(transactions.signedCents))
+    .all()
+    .map((r) => ({
+      id: r.id,
+      fingerprint: r.fingerprint,
+      postedOn: r.postedOn,
+      description: r.description,
+      merchantName: r.merchantName,
+      cents: -r.signedCents,
+      accountName: r.accountName,
+      accountType: r.accountType,
+      status: r.status,
+      categorySource: r.categorySource,
+      installment:
+        r.ccTotalInstallments && r.ccTotalInstallments > 1
+          ? `${r.ccInstallmentNumber ?? '?'}/${r.ccTotalInstallments}`
+          : null,
+    }));
 }

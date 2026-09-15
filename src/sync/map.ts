@@ -121,8 +121,8 @@ export function mapAccount(account: PluggyAccount) {
     creditLimitCents: credit?.creditLimit == null ? null : toCents(credit.creditLimit),
     availableCreditLimitCents:
       credit?.availableCreditLimit == null ? null : toCents(credit.availableCreditLimit),
-    balanceCloseDate: credit?.balanceCloseDate ?? null,
-    balanceDueDate: credit?.balanceDueDate ?? null,
+    balanceCloseDate: credit?.balanceCloseDate ? toLocalDate(credit.balanceCloseDate) : null,
+    balanceDueDate: credit?.balanceDueDate ? toLocalDate(credit.balanceDueDate) : null,
     cardBrand: credit?.brand ?? null,
     cardLevel: credit?.level ?? null,
     rawJson: JSON.stringify(account),
@@ -133,7 +133,10 @@ export function mapBill(bill: PluggyBill, accountId: string) {
   return {
     id: bill.id,
     accountId,
-    dueDate: bill.dueDate ?? null,
+    // Pluggy returns this as a full ISO timestamp ("2026-09-03T00:00:00.000Z"),
+    // not a plain date. Normalize like every other date so it renders and compares
+    // consistently with postedOn.
+    dueDate: bill.dueDate ? toLocalDate(bill.dueDate) : null,
     totalAmountCents: bill.totalAmount == null ? null : toCents(bill.totalAmount),
     minimumPaymentCents:
       bill.minimumPaymentAmount == null ? null : toCents(bill.minimumPaymentAmount),
