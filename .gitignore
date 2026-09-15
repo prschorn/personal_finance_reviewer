@@ -1,0 +1,18 @@
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+
+# Local database and anything derived from it
+db/*.db
+db/*.db-wal
+db/*.db-shm
+
+# Secrets and personal identifiers
+.env
+.env.local
+src/config/own.local.ts
+
+# Captured API payloads (contain real financial data)
+fixtures/raw/
+fixtures/probe-report.txt

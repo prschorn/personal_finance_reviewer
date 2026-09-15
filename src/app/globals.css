@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+/*
+  A ledger, not a dashboard.
+
+  This app replaces a spreadsheet, so the grid of figures IS the interface. The
+  palette stays quiet so that one signal — magnitude, carried by cell shading —
+  can be read before any number is.
+
+  Indigo rather than red for the magnitude ramp: every cell in a spending grid is
+  spending, so a red wall conveys nothing and reads as alarm. Red is reserved for
+  genuine anomalies (a category that took in more than it spent).
+*/
+
+@theme {
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
+}
+
+:root {
+  color-scheme: light;
+
+  --paper: #fafaf8;
+  --surface: #ffffff;
+  --ink: #191c24;
+  --ink-soft: #565b69;
+  --ink-faint: #8f95a3;
+  --rule: #e4e4df;
+  --rule-strong: #c9cac3;
+
+  /* Magnitude ramp, light to heavy */
+  --heat: 61 62 138;        /* rgb, applied at varying alpha */
+  --accent: #3d3e8a;
+  --accent-soft: #eceefb;
+
+  --warn: #8a5a00;
+  --warn-soft: #fdf3e0;
+  --alert: #9b2c2c;
+  --positive: #1f6b4f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --paper: #121319;
+    --surface: #181a22;
+    --ink: #e8e9ec;
+    --ink-soft: #a0a4b0;
+    --ink-faint: #6b7080;
+    --rule: #272a33;
+    --rule-strong: #3a3e4a;
+
+    --heat: 130 132 235;
+    --accent: #9b9df0;
+    --accent-soft: #23253d;
+
+    --warn: #e0b060;
+    --warn-soft: #2a2314;
+    --alert: #e08585;
+    --positive: #6cc0a0;
+  }
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* Every figure in the app is tabular: columns must align to be scannable. */
+.tnum {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* --- the grid ----------------------------------------------------------- */
+
+.ledger {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Horizontal rules only: they let the eye track one category across twelve
+   columns. Vertical rules would fight that, so there is exactly one — before
+   the year-total column. */
+.ledger tbody tr > * {
+  border-bottom: 1px solid var(--rule);
+}
+
+.ledger .col-total {
+  border-left: 1px solid var(--rule-strong);
+}
+
+.ledger thead th {
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.ledger tfoot td {
+  border-top: 1px solid var(--rule-strong);
+  border-bottom: none;
+}
+
+.ledger tbody tr:hover > * {
+  background-color: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.cell-button {
+  display: block;
+  width: 100%;
+  padding: 0.3rem 0.6rem;
+  text-align: right;
+  border-radius: 3px;
+}
+
+.cell-button:hover {
+  outline: 1px solid var(--accent);
+}
+
+:where(a, button, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
