@@ -1,7 +1,8 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, desc, eq, sql } from 'drizzle-orm';
 import { getDb } from '../../db/client';
 import { bootstrap } from '../../db/bootstrap';
 import { categories, rules } from '../../db/schema';
+import { RuleActions } from '../_components/RuleActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,19 +36,22 @@ export default async function RulesPage() {
       setInternal: rules.setInternal,
       categoryName: categories.name,
       enabled: rules.enabled,
+      origin: rules.origin,
     })
     .from(rules)
     .leftJoin(categories, eq(categories.id, rules.setCategoryId))
-    .orderBy(asc(rules.priority), asc(rules.id))
+    .orderBy(asc(rules.priority), desc(sql`length(${rules.matchValue})`), asc(rules.id))
     .all();
 
   return (
     <div className="mx-auto max-w-[900px]">
       <h1 className="mb-1 font-serif text-4xl leading-none tracking-tight">Regras</h1>
       <p className="mb-6 max-w-2xl text-[14px] leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-        A primeira regra que combinar decide a categoria, de cima para baixo. Uma categoria escolhida à mão
-        em Transações sempre vence a regra. Para mudar ou acrescentar regras, edite{' '}
-        <code className="text-[13px]">src/categorize/seed-rules.ts</code> e reinicie o app.
+        A primeira regra que combinar decide a categoria, de cima para baixo. Quando você escolhe a categoria
+        de um lançamento, o app cria aqui uma regra <strong className="font-medium">suas</strong> no topo da
+        lista, e ela vale para todos os meses. Para mudar as regras que vêm com o app, edite{' '}
+        <code className="text-[13px]">src/categorize/seed-rules.ts</code> e reinicie. Elas aparecem abaixo
+        na ordem em que são avaliadas: a mais específica vence quando duas têm a mesma prioridade.
       </p>
 
       <ol className="ledger">
@@ -58,6 +62,14 @@ export default async function RulesPage() {
             </span>
 
             <span className="font-serif text-[15px]">{rule.name}</span>
+            {rule.origin === 'user' && (
+              <span
+                className="rounded px-1.5 py-0.5 text-[11px]"
+                style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+              >
+                sua
+              </span>
+            )}
 
             <span className="text-[12px]" style={{ color: 'var(--ink-faint)' }}>
               {FIELD_LABEL[rule.matchField] ?? rule.matchField} {MATCH_LABEL[rule.matchType] ?? 'combina com'}{' '}
@@ -71,6 +83,8 @@ export default async function RulesPage() {
             <span className="ml-auto text-[13px]" style={{ color: rule.setInternal ? 'var(--accent)' : 'var(--ink)' }}>
               {rule.setInternal ? 'transferência' : (rule.categoryName ?? '—')}
             </span>
+
+            <RuleActions id={rule.id} origin={rule.origin} enabled={rule.enabled} name={rule.name} />
           </li>
         ))}
       </ol>

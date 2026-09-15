@@ -85,6 +85,9 @@ export const rules = sqliteTable(
     // Effects
     setCategoryId: integer('set_category_id').references(() => categories.id),
     setInternal: integer('set_internal', { mode: 'boolean' }),
+    /** 'seed' (shipped with the app) or 'user' (created by categorizing a transaction). */
+    origin: text('origin').notNull().default('seed'),
+    createdAt: text('created_at'),
   },
   (t) => [index('idx_rules_priority').on(t.priority, t.id)],
 );

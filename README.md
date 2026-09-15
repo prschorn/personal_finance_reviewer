@@ -48,6 +48,34 @@ the one place the app deliberately differs from the old spreadsheet, which had
 the totals, with the reason, and any of them can be put back with one click. Wrongly
 excluding real spending is the worst thing this app could do, so it is never silent.
 
+**Categorizing one transaction teaches the rest.** Picking a category creates a
+rule matched on that merchant's name, so it applies to every month — the ones
+already synced and the ones still to come. Correcting September also fixes January.
+
+**Rules can be removed or switched off.** On Regras, a rule you created has a
+Remove button; one shipped with the app only has Disable, because deleting it would
+not stick — seeding re-inserts anything missing by name on the next boot, whereas a
+disabled rule stays disabled. Either way the app tells you how many transactions
+changed category as a result, so a rule that looked harmless can't quietly take a
+dozen transactions with it.
+
+**Installments count as one purchase.** A card statement truncates the description
+and appends the installment marker, so one purchase shows up as
+`PORTO SEGURO CIA S01/10`, `…S02/10` and so on. The match key ignores that marker,
+so categorizing any single installment settles the whole plan — including the ones
+dated next year that have not been billed yet. A broader rule also absorbs any
+narrower ones it now covers, so rules made one installment at a time get tidied
+away rather than shadowing each other.
+Use "só esta" if you really mean just that one transaction; it removes the rule and
+pins the category to that row alone. Your rules sit at the top of Regras marked
+`sua`, above everything shipped with the app.
+
+**A second bank just works.** Each connection syncs independently with its own
+watermark, so one bank being broken never blocks or deletes the other, and identical
+purchases at two banks stay distinct. Transfers between your own banks only become
+detectable once both sides are connected. The one thing to avoid is connecting the
+*same* bank twice — Pluggy warns against it, and it would double-count.
+
 **Categories come from local rules.** Pluggy's own categorization is a paid add-on
 and its generic categories would not produce *Marmitas* or *DARF* anyway. Rules live
 in `src/categorize/seed-rules.ts`; the first match wins, and a category you pick by
@@ -104,7 +132,7 @@ assumed from the docs:
 
 ```bash
 npm run dev         # http://localhost:3000
-npm test            # 284 tests
+npm test            # 345 tests
 npm run typecheck
 npm run probe       # inspect the live Pluggy API, writes fixtures/
 npm run db:migrate

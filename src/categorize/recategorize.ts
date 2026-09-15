@@ -1,4 +1,4 @@
-import { asc, eq, isNull } from 'drizzle-orm';
+import { asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { DB } from '../db/client';
 import { getDb } from '../db/client';
 import { accounts, categories, rules, transactions, transactionOverrides } from '../db/schema';
@@ -108,7 +108,18 @@ function buildContext(db: DB, structural: ReadonlyMap<string, StructuralFinding>
   return {
     overrides: new Map(db.select().from(transactionOverrides).all().map((o) => [o.fingerprint, o])),
     pluggyCategoryIds,
-    rules: db.select().from(rules).orderBy(asc(rules.priority), asc(rules.id)).all(),
+    // Priority first, then SPECIFICITY, then age.
+    //
+    // The specificity tiebreak matters because every rule you create sits at the
+    // same priority. Without it, an early broad rule ("TRANSFERENCIA RECEBIDA")
+    // permanently shadows a later precise one ("TRANSFERENCIA RECEBIDA|SCHORN
+    // CONSULTORIA…"), and categorizing that transaction silently does nothing.
+    // A longer match value is the more specific one, so it goes first.
+    rules: db
+      .select()
+      .from(rules)
+      .orderBy(asc(rules.priority), desc(sql`length(${rules.matchValue})`), asc(rules.id))
+      .all(),
     structural,
     defaults: {
       outrosId: need(CATEGORY_OUTROS),

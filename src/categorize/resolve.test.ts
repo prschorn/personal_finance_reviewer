@@ -19,7 +19,7 @@ function rule(over: Partial<Rule> = {}): Rule {
     id: 1, priority: 100, enabled: true, name: 'r', matchField: 'search_text',
     matchType: 'contains', matchValue: 'MERCADO', accountId: null, accountType: null,
     direction: null, minCents: null, maxCents: null, setCategoryId: MERCADO,
-    setInternal: null, ...over,
+    setInternal: null, origin: 'seed', createdAt: null, ...over,
   };
 }
 

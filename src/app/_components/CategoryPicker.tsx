@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
-import { categorizeTransaction, markInternal } from '../actions';
+import { categorizeAllLike, categorizeOnlyThis, markInternal } from '../actions';
+import type { ActionResult } from '../actions';
 
 interface Option {
   id: number;
@@ -43,7 +44,10 @@ export function CategoryPicker({
 }) {
   const [options, setOptions] = useState<Option[]>(cache ?? []);
   const [pending, start] = useTransition();
-  const [saved, setSaved] = useState(false);
+  /** What the last action did, so the scope of the change is never a surprise. */
+  const [result, setResult] = useState<ActionResult | null>(null);
+  /** Remembers the pick so "só esta" can narrow it without re-selecting. */
+  const [lastPick, setLastPick] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -74,11 +78,10 @@ export function CategoryPicker({
           aria-label="Categoria"
           onChange={(e) => {
             const value = e.target.value ? Number(e.target.value) : null;
-            start(async () => {
-              await categorizeTransaction(fingerprint, value);
-              setSaved(true);
-              setTimeout(() => setSaved(false), 1600);
-            });
+            setLastPick(value);
+            // Default is "everything like this", which is almost always what you
+            // mean when you correct a merchant's category.
+            start(async () => setResult(await categorizeAllLike(fingerprint, value)));
           }}
           className="rounded border px-2 py-1"
           style={control}
@@ -105,7 +108,30 @@ export function CategoryPicker({
         </button>
       )}
 
-      {saved && <span style={{ color: 'var(--accent)' }}>salvo</span>}
+      {result && (
+        <span className="flex flex-wrap items-center gap-2">
+          <span style={{ color: result.ok ? 'var(--accent)' : 'var(--alert)' }}>{result.message}</span>
+          {result.detail?.map((line, i) => (
+            <span key={i} style={{ color: 'var(--warn)' }}>
+              {line}
+            </span>
+          ))}
+          {lastPick !== null && (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                start(async () => setResult(await categorizeOnlyThis(fingerprint, lastPick)))
+              }
+              className="underline disabled:opacity-50"
+              style={{ color: 'var(--ink-faint)' }}
+              title="Aplicar só a este lançamento e desfazer a regra"
+            >
+              só esta
+            </button>
+          )}
+        </span>
+      )}
     </div>
   );
 }
