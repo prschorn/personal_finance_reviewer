@@ -43,7 +43,10 @@ export const TOP_CATEGORIES = 6;
  * For the current year, stop at the current month. Card installments are billed
  * months ahead, so later columns hold scheduled charges and no income at all —
  * plotting them would drop the income line to zero and read as a collapse rather
- * than as "it hasn't happened yet". Future commitments live on the Cartões page.
+ * than as "it hasn't happened yet".
+ *
+ * Those months are not hidden, only kept off this chart: Hoje lists them under
+ * Compromissos, and the monthly matrix has no date ceiling and shows them in place.
  */
 export function monthsToPlot(year: number, now = new Date()): number {
   if (year < now.getFullYear()) return 12;

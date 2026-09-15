@@ -225,7 +225,9 @@ async function syncAccount(api: PluggyApi, db: DB, account: PluggyAccount, ctx: 
   // Mid-update data isn't a reliable complete set, so neither sweep nor advance.
   if (ctx.isUpdating) return;
 
-  const deletedFingerprints = sweepDeleted(db, account.id, plan.rescan, runId, now);
+  // plan.sweep, never plan.rescan: the fetch reaches into the future to refresh
+  // scheduled installments, but absence out there is not evidence of deletion.
+  const deletedFingerprints = sweepDeleted(db, account.id, plan.sweep, runId, now);
   result.deleted += deletedFingerprints.length;
 
   rescueOverrides(db, { deletedFingerprints, accountId: account.id, runId, now }, result.overrides);

@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { getDb } from '../db/client';
 import { bootstrap } from '../db/bootstrap';
-import { getAvailableYears, getDefaultYear, getMatrix, getUncategorized } from '../queries/matrix';
+import { getAvailableYears, getDefaultYear, getMatrix } from '../queries/matrix';
+import { getReviewQueue } from '../queries/review';
 import { formatBRL } from '../lib/money';
 import { MatrixGrid } from './_components/MatrixGrid';
 import { StaleNotice } from './_components/StaleNotice';
@@ -18,7 +19,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ a
   const year = years.includes(requested) ? requested : getDefaultYear(db);
 
   const matrix = getMatrix(db, year);
-  const pending = getUncategorized(db, 500);
+  const review = getReviewQueue(db);
 
   return (
     <div className="mx-auto max-w-[1500px]">
@@ -64,16 +65,17 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ a
 
       <StaleNotice />
 
-      {pending.length > 0 && (
+      {review.total > 0 && (
         <Link
-          href="/transactions?filtro=sem-regra"
+          href="/revisar"
           className="mb-4 flex items-center gap-2 rounded border px-3 py-2 text-[13px]"
           style={{ borderColor: 'var(--warn)', background: 'var(--warn-soft)', color: 'var(--warn)' }}
         >
-          <span className="tnum font-medium">{pending.length}</span>
+          <span className="tnum font-medium">{review.total}</span>
           <span>
-            {pending.length === 1 ? 'transação sem regra' : 'transações sem regra'}: gastos foram para Outros e
-            entradas viraram Receitas. Revisar →
+            {review.total === 1 ? 'item para revisar' : 'itens para revisar'} desde{' '}
+            {review.since.split('-').reverse().join('/')}: duplicatas, valores fora do padrão e
+            categorias que ninguém decidiu. Revisar →
           </span>
         </Link>
       )}

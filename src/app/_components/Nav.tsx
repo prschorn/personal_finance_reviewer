@@ -5,9 +5,12 @@ import { usePathname } from 'next/navigation';
 import { SyncButton } from './SyncButton';
 
 const LINKS = [
+  { href: '/hoje', label: 'Hoje' },
+  { href: '/revisar', label: 'Revisar' },
   { href: '/', label: 'Mensal' },
   { href: '/dashboard', label: 'Painel' },
   { href: '/cards', label: 'Cartões' },
+  { href: '/recorrentes', label: 'Recorrentes' },
   { href: '/transactions', label: 'Transações' },
   { href: '/internal', label: 'Transferências' },
   { href: '/rules', label: 'Regras' },

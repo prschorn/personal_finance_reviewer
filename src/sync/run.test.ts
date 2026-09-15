@@ -282,6 +282,32 @@ describe('deletion detection', () => {
     expect(byId(db, 'ancient')!.deletedAt).toBeNull();
   });
 
+  // Scheduled installments are dated months ahead. The fetch reaches forward to
+  // pick them up; the sweep must not, or the first sync deletes every one of them.
+  it('ingests a future-dated installment on a first sync', async () => {
+    const fake = setupFake();
+    fake.add({ id: 'parcela', accountId: 'acc-card', amount: -330, date: '2026-10-03T00:00:00.000Z' });
+    const db = freshDb();
+
+    await sync(fake, db);
+
+    expect(live(db).map((t) => t.id)).toContain('parcela');
+  });
+
+  it('never sweeps a future-dated row, even when it stops being returned', async () => {
+    const fake = setupFake();
+    fake.add({ id: 'parcela', accountId: 'acc-card', amount: -330, date: '2026-10-03T00:00:00.000Z' });
+    fake.add({ id: 'hoje', accountId: 'acc-bank', amount: -20, date: '2026-03-10T00:00:00.000Z' });
+    const db = freshDb();
+    await sync(fake, db);
+
+    fake.remove('parcela');
+    const res = await sync(fake, db);
+
+    expect(res.deleted).toBe(0);
+    expect(byId(db, 'parcela')!.deletedAt).toBeNull();
+  });
+
   it('catches an old deletion on the monthly deep scan', async () => {
     const fake = setupFake();
     fake.add({ id: 'ancient', accountId: 'acc-bank', amount: -10, date: '2025-06-01T00:00:00.000Z' });

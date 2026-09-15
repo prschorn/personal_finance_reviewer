@@ -2,8 +2,15 @@
 
 A local web app that replaces the `Planilha orçamento` spreadsheet. It pulls bank
 and credit card data from [Pluggy](https://docs.pluggy.ai) into a SQLite file on
-this machine and renders two views:
+this machine and renders:
 
+- **Hoje** — balances, how much of each card limit is used, what the next bill is
+  collecting so far and when it lands, the installments already scheduled into
+  months that haven't happened, and how this month is pacing against your own
+  previous months. The only view that looks forward.
+- **Revisar** — one list of what is worth a second look since you last looked:
+  duplicates, charges far above anything ever spent at that merchant, categories
+  nothing decided, and subscriptions that changed price or went quiet.
 - **Mensal** — every category by month for a year, with the transactions behind
   any figure one click away.
 - **Painel** — income against spending month by month, and the biggest categories
@@ -12,6 +19,8 @@ this machine and renders two views:
 - **Cartões** — credit card spending by category, by card and by bill. Clicking a
   category opens the card transactions behind it, for the year or the single month
   on screen.
+- **Recorrentes** — what comes back every month, found by cadence rather than by a
+  list of brand names, split into things with a price and things that merely repeat.
 
 Single user, runs locally, nothing leaves this computer.
 
@@ -119,7 +128,114 @@ the ones that remain.
 Charts stop at the current month for the current year. Card installments are billed
 months ahead, so the tail of the year holds scheduled charges and no income —
 plotting it would drop the income line to zero and read as a collapse rather than as
-"it hasn't happened yet".
+"it hasn't happened yet". Those months are not hidden: Hoje lists them under
+Compromissos, and Mensal has no date ceiling and shows them in place.
+
+## Recurring charges
+
+**Found by cadence, not by a list of names.** The shipped "Assinaturas digitais"
+rule names ten brands and decides a *category*; this decides whether something
+*recurs*, which is a different question — it finds services no list contains.
+It reads `category_id` and never writes it, so no figure elsewhere moves.
+
+**One charge a month is the load-bearing test.** Grouping uses the same
+`matchKeyFor` that rule-learning uses, which prefers `merchantName` and is coarse:
+one ride-hailing merchant covers 125 charges across 10 months with perfect monthly
+"cadence". Requiring the *median* month to hold exactly one charge is what keeps
+every restaurant and petrol station out, while still tolerating a double-billed month.
+
+**Fixed and variable are shown apart, and only fixed has a price.** A password
+manager and an electricity bill both recur, but only one will bill the same amount
+again — so only the fixed ones are summed into a monthly commitment. A series counts
+as fixed when most months repeat the previous month's amount, *not* by the spread of
+its whole history: a genuine price rise widens that spread and would classify exactly
+the series worth flagging as "variable", suppressing its own detection.
+
+**A price change has to settle on both sides.** A jump counts only if the new amount
+holds to the present *and* the old one was a level rather than one odd month.
+Without the second half, a double charge followed by a return to normal reads as a
+price cut. Once a change has stuck, the series is priced at the new level — the
+cheaper months are history, and annualizing a median that still contains them
+projects a bill that will never arrive.
+
+**"Parou" needs a whole missed month.** A charge that normally lands on the 31st
+simply has not happened yet on the 15th; claiming it stopped after one missing month
+would cry wolf every month, for every late-in-month series.
+
+## Pacing
+
+**Same day against the same day.** This month to day 15 is compared against the
+first 15 days of each of the previous six months — never against a whole month
+prorated. Prorating assumes spending is spread evenly through a month, and it is
+not: the condo lands on the 1st and the electricity bill mid-month, so on day 2 a
+prorated reference would report the condo at 400% of "expected" every single month.
+Cutting both sides at the same day assumes nothing. A 30-day month contributes its
+whole total "as of day 31", which is right — it has no day 31.
+
+**Median, and the band around it.** Half of all months sit above a median by
+construction, so "above" is not a warning and is never coloured as one. The p25–p75
+band is what gives a figure its context: inside it is an ordinary month, whichever
+side of the median it fell on.
+
+**Too little history says so.** Four of six months makes a reference; two or three
+is shown but labelled short; fewer than two shows the figure with no comparison at
+all. A percentage derived from one month is a number pretending to be a reference.
+
+## The review queue
+
+**One stored fact: when you last cleared it.** Everything else is derived at read
+time, which is why there is no review table. "New" means `first_seen_at` after that
+moment — written once at insert and never updated, even by Pluggy's
+delete-and-recreate, which makes it a true "new to this app" watermark. On a first
+open everything is new, and the page says the date is when a row *arrived*, not when
+it was charged.
+
+**Clearing it is a button.** Marking on arrival would lose a digest to a stray click.
+
+**"Sem regra" had quietly stopped working.** Nothing in the database has
+`category_source = 'default'` any more: the Pluggy-hint tier in `resolve()` sits
+above the fallback and absorbs everything, so `getUncategorized()` always returned
+nothing and the old banner never rendered. The queue therefore treats `'pluggy'`
+rows as guesses too, labelled apart from `'default'` ones — one means no rule
+matched, the other means no rule of *yours* decided it.
+
+**Outliers are measured against your own record.** A charge is flagged when it
+beats the largest you have ever spent at that merchant by 2.5×, on a history of at
+least three charges, and is over R$ 50. Against the maximum rather than the median,
+because beating a median happens about half the time and would bury the queue.
+
+**Series-level facts expire.** A price change and a series going quiet are facts
+about a whole series, so no row-arrival watermark can retire them; without a window
+they would return every time the queue was cleared, and a queue that never empties
+stops being read. They stay for two months. The permanent list is Recorrentes.
+
+## What is already committed
+
+**Scheduled installments are real rows, not a projection.** Instalment 2 onwards
+arrives from Pluggy dated on the due date of the bill that will carry it, so
+grouping by date already groups by bill. Hoje reads them straight; nothing is
+inferred and nothing is added to the totals, because Mensal is already counting
+those same rows in those same months.
+
+**The next bill is estimated, and says so.** Pluggy returns only *closed* bills —
+there is no row for the cycle currently collecting, and `balanceDueDate` points at
+the last bill that already came due. So the due day comes from the card's own
+history and the closing date from `billClosingDate` inside the stored payload,
+which has run exactly seven days ahead of the due date on every bill so far.
+
+**Nothing is ever written to the `bills` table.** A projected bill row would be
+matched by the card-payment detector, which marks any bank outflow internal when it
+lands within fifty centavos and five days of a stored bill — a plausible-looking
+projection would silently erase a real payment from every figure in the app. The
+projection is computed on read and never stored.
+
+**The sync asks for the future but will not delete in it.** The fetch window now
+reaches 400 days ahead so a scheduled installment is re-read on every sync instead
+of being frozen at first sight. The deletion sweep still stops at tomorrow: a range
+is only authoritative for deletion once it has been observed coming back complete,
+and nothing has yet established that a date-ranged query returns future rows at all.
+Until it does, a cancelled installment lingers, and Hoje says so rather than
+quietly carrying it.
 
 ## Sync
 
@@ -168,7 +284,7 @@ assumed from the docs:
 
 ```bash
 npm run dev         # http://localhost:3000
-npm test            # 381 tests
+npm test            # 515 tests
 npm run typecheck
 npm run probe       # inspect the live Pluggy API, writes fixtures/
 npm run db:migrate
@@ -180,6 +296,13 @@ To look at the UI without real data:
 FINANCE_DB_PATH=db/demo.db npx tsx src/scripts/demo-seed.ts
 FINANCE_DB_PATH=db/demo.db npx next dev --port 3100
 ```
+
+The demo runs the real pipeline against `FakePluggy`, and is anchored to today's
+date rather than a fixed year, so the forward-looking views always have something
+in them: an installment plan materialized into months that have not happened, an
+open cycle with no bill row, subscriptions billed to the exact centavo (one of
+which raises its price partway through), a cancelled one, and at least one item of
+every kind the review queue reports.
 
 ## Layout
 

@@ -1,5 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { toLocalDate, toMonth, monthsOfYear, addDays, isYmd } from './date';
+import {
+  toLocalDate,
+  toMonth,
+  monthsOfYear,
+  addDays,
+  isYmd,
+  addMonths,
+  daysInMonth,
+  dateInMonth,
+  dayOfMonth,
+  daysBetween,
+  monthsBetween,
+  recentMonths,
+} from './date';
 
 describe('toLocalDate', () => {
   // Pluggy's dominant case: midnight UTC standing in for a local calendar date.
@@ -85,5 +98,97 @@ describe('isYmd', () => {
     expect(isYmd('2026-3-1')).toBe(false);
     expect(isYmd('2026-03-01T00:00:00Z')).toBe(false);
     expect(isYmd('')).toBe(false);
+  });
+});
+
+describe('addMonths', () => {
+  it('steps forward and back across year boundaries', () => {
+    expect(addMonths('2026-09', 1)).toBe('2026-10');
+    expect(addMonths('2026-12', 1)).toBe('2027-01');
+    expect(addMonths('2026-01', -1)).toBe('2025-12');
+    expect(addMonths('2026-09', 4)).toBe('2027-01');
+    expect(addMonths('2026-09', -9)).toBe('2025-12');
+  });
+
+  it('returns the same month for a zero step', () => {
+    expect(addMonths('2026-09', 0)).toBe('2026-09');
+  });
+
+  it('rejects anything that is not YYYY-MM', () => {
+    expect(() => addMonths('2026-09-15', 1)).toThrow();
+    expect(() => addMonths('2026-9', 1)).toThrow();
+  });
+});
+
+describe('daysInMonth', () => {
+  it('knows month lengths, including leap Februaries', () => {
+    expect(daysInMonth('2026-01')).toBe(31);
+    expect(daysInMonth('2026-04')).toBe(30);
+    expect(daysInMonth('2026-02')).toBe(28);
+    expect(daysInMonth('2028-02')).toBe(29);
+  });
+});
+
+describe('dateInMonth', () => {
+  it('builds a date from a month and a day', () => {
+    expect(dateInMonth('2026-10', 3)).toBe('2026-10-03');
+    expect(dateInMonth('2026-10', 15)).toBe('2026-10-15');
+  });
+
+  // A card that bills on the 31st still bills in November, on the 30th.
+  it('clamps a day past the end of the month', () => {
+    expect(dateInMonth('2026-11', 31)).toBe('2026-11-30');
+    expect(dateInMonth('2026-02', 31)).toBe('2026-02-28');
+    expect(dateInMonth('2028-02', 30)).toBe('2028-02-29');
+  });
+});
+
+describe('dayOfMonth', () => {
+  it('reads the day component', () => {
+    expect(dayOfMonth('2026-10-03')).toBe(3);
+    expect(dayOfMonth('2026-10-31')).toBe(31);
+  });
+
+  it('rejects anything that is not YYYY-MM-DD', () => {
+    expect(() => dayOfMonth('2026-10')).toThrow();
+  });
+});
+
+describe('daysBetween', () => {
+  it('returns a signed day count', () => {
+    expect(daysBetween('2026-10-03', '2026-09-15')).toBe(18);
+    expect(daysBetween('2026-09-15', '2026-10-03')).toBe(-18);
+    expect(daysBetween('2026-09-15', '2026-09-15')).toBe(0);
+  });
+
+  it('spans a year boundary', () => {
+    expect(daysBetween('2027-01-03', '2026-12-03')).toBe(31);
+  });
+});
+
+describe('monthsBetween', () => {
+  it('counts whole months, signed', () => {
+    expect(monthsBetween('2026-09', '2026-09')).toBe(0);
+    expect(monthsBetween('2026-09', '2026-10')).toBe(1);
+    expect(monthsBetween('2026-09', '2027-01')).toBe(4);
+    expect(monthsBetween('2026-10', '2026-09')).toBe(-1);
+  });
+
+  it('spans years', () => {
+    expect(monthsBetween('2025-12', '2026-12')).toBe(12);
+  });
+});
+
+describe('recentMonths', () => {
+  it('returns the n months ending at the given one, oldest first', () => {
+    expect(recentMonths('2026-09', 3)).toEqual(['2026-07', '2026-08', '2026-09']);
+  });
+
+  it('crosses a year boundary', () => {
+    expect(recentMonths('2026-02', 4)).toEqual(['2025-11', '2025-12', '2026-01', '2026-02']);
+  });
+
+  it('returns nothing for a count of zero', () => {
+    expect(recentMonths('2026-09', 0)).toEqual([]);
   });
 });

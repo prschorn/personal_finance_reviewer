@@ -5,6 +5,7 @@ import { accounts, bills, transactions } from '../db/schema';
 import type { StructuralFinding } from '../categorize/resolve';
 import { getOwnIdentifiers, type OwnIdentifiers } from '../config/own';
 import { PLUGGY_INTERNAL_CATEGORIES } from '../categorize/pluggy-categories';
+import { daysBetween } from '../lib/date';
 
 /**
  * Detect movements between the user's own accounts, so they don't count as spending.
@@ -250,8 +251,4 @@ export function listInternal(db: DB = getDb()) {
     .where(and(isNull(transactions.deletedAt), eq(transactions.isInternal, true)))
     .orderBy(transactions.postedOn)
     .all();
-}
-
-function daysBetween(a: string, b: string): number {
-  return (Date.parse(a) - Date.parse(b)) / 86_400_000;
 }

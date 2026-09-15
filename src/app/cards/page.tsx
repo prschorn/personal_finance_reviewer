@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { getDb } from '../../db/client';
 import { bootstrap } from '../../db/bootstrap';
-import { getCardBreakdown, getOpenInstallments } from '../../queries/cards';
+import { getCardBreakdown } from '../../queries/cards';
+import { getCommitted } from '../../queries/today';
 import { getAvailableYears, getDefaultYear } from '../../queries/matrix';
 import { formatBRL } from '../../lib/money';
 import { Money } from '../_components/Money';
@@ -29,8 +30,8 @@ export default async function CardsPage({
   const month = params.mes && /^\d{4}-\d{2}$/.test(params.mes) ? params.mes : undefined;
 
   const b = getCardBreakdown(db, { year, month });
-  const open = getOpenInstallments(db);
-  const committed = open.reduce((s, r) => s + r.remainingCents, 0);
+  const committedMonths = getCommitted(db);
+  const committed = committedMonths.reduce((s, m) => s + m.cents, 0);
 
   const href = (m?: string) => `/cards?ano=${year}${m ? `&mes=${m}` : ''}`;
 
@@ -141,15 +142,16 @@ export default async function CardsPage({
               <section>
                 <h2 className="mb-1 font-serif text-xl">Parcelas a vencer</h2>
                 <p className="mb-3 text-[12px]" style={{ color: 'var(--ink-faint)' }}>
-                  Já comprado, ainda não faturado. Não entra nos totais acima.
+                  Já comprado, ainda não faturado. Cada parcela já está lançada no mês em que
+                  vai cair, então isto não se soma aos totais acima — é outra leitura deles.
                 </p>
                 <p className="tnum text-[20px]"><Money cents={committed} /></p>
                 <ul className="mt-3 space-y-1.5 text-[12px]" style={{ color: 'var(--ink-soft)' }}>
-                  {open.slice(0, 6).map((r, i) => (
-                    <li key={i} className="flex justify-between gap-3">
-                      <span className="truncate">{r.description}</span>
+                  {committedMonths.map((m) => (
+                    <li key={m.month} className="flex justify-between gap-3">
+                      <span>{monthLabel(m.month)}</span>
                       <span className="tnum shrink-0">
-                        faltam {r.remainingCount} de {r.totalInstallments} · {formatBRL(r.remainingCents)}
+                        {m.count} {m.count === 1 ? 'parcela' : 'parcelas'} · {formatBRL(m.cents)}
                       </span>
                     </li>
                   ))}

@@ -1,37 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { eq } from 'drizzle-orm';
-import { createTestDb, type DB } from '../db/client';
-import { runMigrations } from '../db/migrate';
-import { seedCategories } from '../db/seed-categories';
-import { accounts, categories, items, transactions } from '../db/schema';
+import type { DB } from '../db/client';
+import { freshDb as makeDb, addTx as insertTx } from '../db/testing';
 import { countByFilter, listTransactions } from './transactions';
-import { buildSearchText } from '../lib/text';
 
 function freshDb(): DB {
-  const { db } = createTestDb();
-  runMigrations(db);
-  seedCategories(db);
-  db.insert(items).values({ id: 'i' }).run();
-  db.insert(accounts).values({ id: 'a', itemId: 'i', type: 'BANK', name: 'Conta' }).run();
-  return db;
+  return makeDb({ accounts: [{ id: 'a', type: 'BANK', name: 'Conta' }] });
 }
 
-let n = 0;
 function addTx(db: DB, o: {
   description: string; signedCents: number; category: string; categorySource: string;
   status?: string; postedOn?: string;
 }) {
-  const id = `tx-${++n}`;
-  db.insert(transactions).values({
-    id, accountId: 'a', fingerprint: `fp-${id}`,
-    dateUtc: `${o.postedOn ?? '2026-09-01'}T12:00:00.000Z`, postedOn: o.postedOn ?? '2026-09-01',
-    description: o.description, searchText: buildSearchText({ description: o.description }),
-    amountCents: Math.abs(o.signedCents), signedCents: o.signedCents,
-    status: o.status ?? 'POSTED', firstSeenAt: 'now', lastSeenRunId: 1, rawJson: '{}',
-    categoryId: db.select().from(categories).where(eq(categories.name, o.category)).get()!.id,
-    categorySource: o.categorySource,
-  }).run();
-  return id;
+  return insertTx(db, { accountId: 'a', postedOn: '2026-09-01', ...o });
 }
 
 describe('the "sem regra" filter', () => {

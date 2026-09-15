@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { DB } from '../db/client';
 import { transactions, transactionOverrides } from '../db/schema';
+import { daysBetween } from '../lib/date';
 
 /**
  * Carry manual categorizations across Pluggy's delete-and-recreate.
@@ -163,8 +164,4 @@ function existingOverride(db: DB, fingerprint: string): boolean {
     .from(transactionOverrides)
     .where(eq(transactionOverrides.fingerprint, fingerprint))
     .get();
-}
-
-function daysBetween(a: string, b: string): number {
-  return (Date.parse(a) - Date.parse(b)) / 86_400_000;
 }

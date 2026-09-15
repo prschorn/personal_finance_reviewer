@@ -23,6 +23,8 @@ export const DEFAULT_DEEP_SCAN_INTERVAL_DAYS = 30;
 export const DEFAULT_FULL_HISTORY_DAYS = 365;
 /** Absorbs clock skew between our host and Pluggy, and one failed run. */
 export const WATERMARK_MARGIN_MS = 24 * 60 * 60 * 1000;
+/** How far ahead to ASK for rows. Card installments are billed a year or more out. */
+export const DEFAULT_FUTURE_HORIZON_DAYS = 400;
 
 export interface AccountSyncStateLike {
   lastSuccessAt?: string | null;
@@ -35,12 +37,33 @@ export interface WindowPlanOptions {
   rescanDays?: number;
   deepScanIntervalDays?: number;
   fullHistoryDays?: number;
+  futureHorizonDays?: number;
 }
 
 export interface WindowPlan {
   /** Absent on a first sync, where the full-history rescan already covers everything. */
   incremental: { createdAtFrom: string } | null;
+  /**
+   * What we ASK Pluggy for. Reaches into the future so scheduled card installments
+   * are re-confirmed on every sync instead of frozen at the moment they were first
+   * seen — a plan that gets cancelled or renegotiated should stop being reported.
+   */
   rescan: { dateFrom: Ymd; dateTo: Ymd };
+  /**
+   * What the sweep may delete within. Narrower than `rescan` on purpose.
+   *
+   * A range is authoritative for deletion only once we have observed it come back
+   * complete. Nothing has yet established that a date-ranged `/v2/transactions`
+   * query returns future-dated rows at all, and if it does not, a forward-reaching
+   * sweep would soft-delete every scheduled installment on the first run. Widen
+   * this to match `rescan` only after confirming that future rows come back with
+   * the current run id:
+   *
+   *   SELECT last_seen_run_id = (SELECT max(id) FROM sync_runs), count(*)
+   *   FROM transactions
+   *   WHERE deleted_at IS NULL AND posted_on > date('now') GROUP BY 1;
+   */
+  sweep: { dateFrom: Ymd; dateTo: Ymd };
   /** True when the rescan covers the full history, so its sweep is authoritative for all of it. */
   isDeepScan: boolean;
   isFirstSync: boolean;
@@ -55,15 +78,17 @@ export function planWindows(state: AccountSyncStateLike, opts: WindowPlanOptions
   const deepScanDue = isDeepScanDue(state.lastDeepScanAt, opts.now, deepScanIntervalDays);
   const isDeepScan = isFirstSync || deepScanDue;
 
-  // dateTo is tomorrow: some institutions post a transaction dated slightly ahead.
-  const dateTo = addDays(opts.today, 1);
   const dateFrom = addDays(opts.today, -(isDeepScan ? fullHistoryDays : rescanDays));
+  // Tomorrow: some institutions post a transaction dated slightly ahead.
+  const sweepTo = addDays(opts.today, 1);
+  const fetchTo = addDays(opts.today, opts.futureHorizonDays ?? DEFAULT_FUTURE_HORIZON_DAYS);
 
   return {
     incremental: isFirstSync
       ? null
       : { createdAtFrom: new Date(Date.parse(state.lastSuccessAt!) - WATERMARK_MARGIN_MS).toISOString() },
-    rescan: { dateFrom, dateTo },
+    rescan: { dateFrom, dateTo: fetchTo },
+    sweep: { dateFrom, dateTo: sweepTo },
     isDeepScan,
     isFirstSync,
   };

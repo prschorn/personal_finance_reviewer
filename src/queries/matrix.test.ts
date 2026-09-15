@@ -1,49 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { eq } from 'drizzle-orm';
-import { createTestDb, type DB } from '../db/client';
-import { runMigrations } from '../db/migrate';
-import { seedCategories } from '../db/seed-categories';
-import { accounts, categories, items, transactions } from '../db/schema';
+import type { DB } from '../db/client';
+import { categories } from '../db/schema';
+import { freshDb, catId, addTx } from '../db/testing';
 import { getMatrix, getCellTransactions, getAvailableYears, getDefaultYear, getUncategorized } from './matrix';
-
-function freshDb(): DB {
-  const { db } = createTestDb();
-  runMigrations(db);
-  seedCategories(db);
-  db.insert(items).values({ id: 'item-1' }).run();
-  db.insert(accounts).values({ id: 'acc-bank', itemId: 'item-1', type: 'BANK', name: 'Conta' }).run();
-  db.insert(accounts).values({ id: 'acc-card', itemId: 'item-1', type: 'CREDIT', name: 'Cartão' }).run();
-  return db;
-}
-
-function catId(db: DB, name: string): number {
-  return db.select().from(categories).where(eq(categories.name, name)).get()!.id;
-}
-
-let n = 0;
-function addTx(db: DB, o: {
-  postedOn: string; signedCents: number; category?: string; accountId?: string;
-  isInternal?: boolean; deleted?: boolean; description?: string; categorySource?: string;
-  installments?: [number, number];
-}) {
-  const id = `tx-${++n}`;
-  db.insert(transactions)
-    .values({
-      id, accountId: o.accountId ?? 'acc-bank', fingerprint: `fp-${id}`,
-      dateUtc: `${o.postedOn}T00:00:00.000Z`, postedOn: o.postedOn,
-      description: o.description ?? 'ALGO', searchText: 'ALGO',
-      amountCents: Math.abs(o.signedCents), signedCents: o.signedCents,
-      status: 'POSTED', firstSeenAt: 'now', lastSeenRunId: 1, rawJson: '{}',
-      categoryId: o.category ? catId(db, o.category) : null,
-      categorySource: o.categorySource ?? 'rule',
-      isInternal: o.isInternal ?? false,
-      deletedAt: o.deleted ? 'now' : null,
-      ccInstallmentNumber: o.installments?.[0] ?? null,
-      ccTotalInstallments: o.installments?.[1] ?? null,
-    })
-    .run();
-  return id;
-}
 
 function rowFor(m: ReturnType<typeof getMatrix>, name: string) {
   return m.rows.find((r) => r.name === name)!;

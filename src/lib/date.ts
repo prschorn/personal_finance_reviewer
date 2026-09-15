@@ -68,3 +68,53 @@ export function addDays(ymd: Ymd, days: number): Ymd {
 export function today(now: Date = new Date()): Ymd {
   return SP_FORMATTER.format(now);
 }
+
+const YM_RE = /^\d{4}-\d{2}$/;
+
+/** Step a month forward or back. Pure arithmetic on the year/month pair. */
+export function addMonths(ym: Ym, months: number): Ym {
+  if (!YM_RE.test(ym)) throw new Error(`Expected YYYY-MM, got ${JSON.stringify(ym)}`);
+  const [y, m] = ym.split('-').map(Number) as [number, number];
+  const zeroBased = y * 12 + (m - 1) + months;
+  return `${Math.floor(zeroBased / 12)}-${String((zeroBased % 12) + 1).padStart(2, '0')}`;
+}
+
+export function daysInMonth(ym: Ym): number {
+  if (!YM_RE.test(ym)) throw new Error(`Expected YYYY-MM, got ${JSON.stringify(ym)}`);
+  const [y, m] = ym.split('-').map(Number) as [number, number];
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+/**
+ * A date within a month, clamped to the month's last day.
+ *
+ * Card cycles are identified by a day of the month, and a card that bills on the
+ * 31st still bills in November — on the 30th. Clamping here is what stops that
+ * becoming `2026-11-31`.
+ */
+export function dateInMonth(ym: Ym, day: number): Ymd {
+  const clamped = Math.min(day, daysInMonth(ym));
+  return `${ym}-${String(clamped).padStart(2, '0')}`;
+}
+
+export function dayOfMonth(ymd: Ymd): number {
+  if (!isYmd(ymd)) throw new Error(`Expected YYYY-MM-DD, got ${JSON.stringify(ymd)}`);
+  return Number(ymd.slice(8, 10));
+}
+
+/** Signed whole-day difference, `a − b`. */
+export function daysBetween(a: string, b: string): number {
+  return (Date.parse(a) - Date.parse(b)) / 86_400_000;
+}
+
+/** Signed whole-month difference, `b − a`. */
+export function monthsBetween(a: Ym, b: Ym): number {
+  const at = a.split('-').map(Number) as [number, number];
+  const bt = b.split('-').map(Number) as [number, number];
+  return (bt[0] - at[0]) * 12 + (bt[1] - at[1]);
+}
+
+/** The `count` months ending at `ym`, oldest first. */
+export function recentMonths(ym: Ym, count: number): Ym[] {
+  return Array.from({ length: count }, (_, i) => addMonths(ym, i - count + 1));
+}

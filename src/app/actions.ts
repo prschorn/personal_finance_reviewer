@@ -11,6 +11,8 @@ import {
   findShadowingRule, learnCategoryFromTransaction, setRuleEnabled,
 } from '../categorize/learn';
 import { setOwnIdentifiers } from '../config/own';
+import { setLastReviewedAt } from '../config/settings';
+import { getReviewQueue } from '../queries/review';
 import { items } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
@@ -27,7 +29,7 @@ export interface ActionResult {
 }
 
 function revalidateAll() {
-  for (const path of ['/', '/cards', '/transactions', '/internal', '/rules', '/settings']) {
+  for (const path of ['/', '/hoje', '/dashboard', '/cards', '/recorrentes', '/revisar', '/transactions', '/internal', '/rules', '/settings']) {
     revalidatePath(path);
   }
 }
@@ -267,5 +269,25 @@ export async function toggleRule(id: number, enabled: boolean): Promise<ActionRe
     message: moved
       ? `Regra "${res.name}" ${what}. ${moved} ${moved === 1 ? 'lançamento mudou' : 'lançamentos mudaram'} de categoria.`
       : `Regra "${res.name}" ${what}. Nenhum lançamento mudou de categoria.`,
+  };
+}
+
+/**
+ * Clear the review queue.
+ *
+ * Explicit, never implicit on visiting the page: a digest you lose to a stray
+ * click is worse than one you have to dismiss. Nothing about categorization
+ * changes, so this does not recategorize.
+ */
+export async function markReviewed(): Promise<ActionResult> {
+  const db = bootstrap(getDb());
+  const before = getReviewQueue(db).total;
+
+  setLastReviewedAt(db);
+  revalidateAll();
+
+  return {
+    ok: true,
+    message: before === 0 ? 'Nada na fila.' : `Marcado. ${before} ${before === 1 ? 'item saiu' : 'itens saíram'} da fila.`,
   };
 }

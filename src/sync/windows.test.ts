@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { planWindows, isDeepScanDue, isStale, DEFAULT_RESCAN_DAYS } from './windows';
+import {
+  planWindows,
+  isDeepScanDue,
+  isStale,
+  DEFAULT_RESCAN_DAYS,
+  DEFAULT_FUTURE_HORIZON_DAYS,
+} from './windows';
 
 const base = { today: '2026-03-15', now: '2026-03-15T12:00:00.000Z' };
 
@@ -10,7 +16,8 @@ describe('first sync', () => {
     expect(plan.incremental).toBeNull();
     expect(plan.isDeepScan).toBe(true);
     expect(plan.rescan.dateFrom).toBe('2025-03-15'); // 365 days back
-    expect(plan.rescan.dateTo).toBe('2026-03-16');
+    expect(plan.rescan.dateTo).toBe('2027-04-19'); // 400 days forward
+    expect(plan.sweep.dateTo).toBe('2026-03-16');
   });
 });
 
@@ -21,7 +28,7 @@ describe('routine sync', () => {
     const plan = planWindows(state, base);
     expect(plan.isDeepScan).toBe(false);
     expect(plan.rescan.dateFrom).toBe('2026-01-29'); // 45 days back
-    expect(plan.rescan.dateTo).toBe('2026-03-16');
+    expect(plan.rescan.dateTo).toBe('2027-04-19'); // 400 days forward
   });
 
   it('backdates the incremental watermark by 24h to absorb clock skew', () => {
@@ -31,7 +38,7 @@ describe('routine sync', () => {
 
   it('covers a full card cycle plus slack', () => {
     const plan = planWindows(state, base);
-    const days = (Date.parse(plan.rescan.dateTo) - Date.parse(plan.rescan.dateFrom)) / 86_400_000;
+    const days = (Date.parse(plan.sweep.dateTo) - Date.parse(plan.sweep.dateFrom)) / 86_400_000;
     expect(days).toBe(DEFAULT_RESCAN_DAYS + 1);
   });
 });
@@ -66,5 +73,33 @@ describe('isStale', () => {
     expect(isStale('2026-03-15T11:00:00.000Z', now)).toBe(false); // 1h old
     expect(isStale('2026-03-15T05:00:00.000Z', now)).toBe(true); // 7h old
     expect(isStale('2026-03-15T06:00:00.000Z', now)).toBe(true); // exactly 6h
+  });
+});
+
+describe('fetch and sweep ranges are decoupled', () => {
+  const state = { lastSuccessAt: '2026-03-15T06:00:00.000Z', lastDeepScanAt: '2026-03-10T00:00:00.000Z' };
+
+  // Scheduled card installments are dated months ahead. Asking Pluggy for them on
+  // every sync is how their amounts stay current instead of frozen at first sight.
+  it('asks Pluggy for the whole future horizon', () => {
+    const plan = planWindows(state, base);
+    const forward = (Date.parse(plan.rescan.dateTo) - Date.parse(base.today)) / 86_400_000;
+    expect(forward).toBe(DEFAULT_FUTURE_HORIZON_DAYS);
+  });
+
+  // The sweep deletes anything it did not see. Until we have observed that a ranged
+  // query really returns future-dated rows, letting it reach forward would delete
+  // every scheduled installment on the first sync.
+  it('never lets the sweep reach past tomorrow', () => {
+    const plan = planWindows(state, base);
+    expect(plan.sweep.dateTo).toBe('2026-03-16');
+    expect(plan.sweep.dateTo < plan.rescan.dateTo).toBe(true);
+  });
+
+  it('keeps the sweep start aligned with the fetch start, so a deep scan still repairs history', () => {
+    const deep = planWindows({ lastSuccessAt: '2026-03-15T06:00:00.000Z', lastDeepScanAt: '2026-02-01T00:00:00.000Z' }, base);
+    expect(deep.isDeepScan).toBe(true);
+    expect(deep.sweep.dateFrom).toBe(deep.rescan.dateFrom);
+    expect(deep.sweep.dateFrom).toBe('2025-03-15');
   });
 });

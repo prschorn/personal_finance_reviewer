@@ -1,35 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { eq } from 'drizzle-orm';
-import { createTestDb, type DB } from '../db/client';
-import { runMigrations } from '../db/migrate';
-import { seedCategories } from '../db/seed-categories';
-import { accounts, categories, items, transactions } from '../db/schema';
+import type { DB } from '../db/client';
+import { freshDb as makeDb, addTx as insertTx } from '../db/testing';
 import { getMatrix } from './matrix';
 import { buildDashboard, getDashboard, monthsToPlot, TOP_CATEGORIES } from './dashboard';
 
 function freshDb(): DB {
-  const { db } = createTestDb();
-  runMigrations(db);
-  seedCategories(db);
-  db.insert(items).values({ id: 'i' }).run();
-  db.insert(accounts).values({ id: 'a', itemId: 'i', type: 'BANK' }).run();
-  return db;
+  return makeDb({ accounts: [{ id: 'a', type: 'BANK' }] });
 }
 
-let n = 0;
 function addTx(db: DB, o: { postedOn: string; signedCents: number; category: string }) {
-  const id = `tx-${++n}`;
-  db.insert(transactions).values({
-    id, accountId: 'a', fingerprint: `fp-${id}`,
-    dateUtc: `${o.postedOn}T12:00:00.000Z`, postedOn: o.postedOn,
-    description: 'X', searchText: 'X',
-    amountCents: Math.abs(o.signedCents), signedCents: o.signedCents,
-    status: 'POSTED', firstSeenAt: 'now', lastSeenRunId: 1, rawJson: '{}',
-    categoryId: db.select().from(categories).where(eq(categories.name, o.category)).get()!.id,
-    categorySource: 'rule',
-  }).run();
+  return insertTx(db, { accountId: 'a', ...o });
 }
 
+/** A clock past the end of the year, so nothing is truncated as "not yet". */
 const DEC = new Date('2026-12-31T12:00:00.000Z');
 
 describe('monthsToPlot', () => {
