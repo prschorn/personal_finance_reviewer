@@ -128,3 +128,35 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* --- chart series -------------------------------------------------------
+   The validated categorical theme. NOT the app's indigo/green accents: those
+   fail the validator on this surface (indigo outside the lightness band, the
+   green below the chroma floor, reading as gray). Slots are fixed per entity
+   and never cycled; a ninth series folds into "Outras".
+   Light steps validated against #fafaf8, dark steps against #121319. */
+:root {
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+}
+
+/* The dark steps are the same eight hues re-stepped for the dark surface and
+   validated as a set, not an automatic flip of the light values. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
+    --series-8: #e66767;
+  }
+}

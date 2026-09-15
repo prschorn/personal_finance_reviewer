@@ -6,6 +6,7 @@ import { SyncButton } from './SyncButton';
 
 const LINKS = [
   { href: '/', label: 'Mensal' },
+  { href: '/dashboard', label: 'Painel' },
   { href: '/cards', label: 'Cartões' },
   { href: '/transactions', label: 'Transações' },
   { href: '/internal', label: 'Transferências' },

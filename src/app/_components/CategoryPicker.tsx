@@ -36,10 +36,16 @@ function loadCategories(): Promise<Option[]> {
 export function CategoryPicker({
   fingerprint,
   currentId,
+  currentName,
+  isGuess = false,
   showInternal = true,
 }: {
   fingerprint: string;
   currentId: number | null;
+  /** Name of the current category, for the confirm action. */
+  currentName?: string | null;
+  /** True when the category is only the app's fallback, not a decision. */
+  isGuess?: boolean;
   showInternal?: boolean;
 }) {
   const [options, setOptions] = useState<Option[]>(cache ?? []);
@@ -93,6 +99,25 @@ export function CategoryPicker({
             </option>
           ))}
         </select>
+      )}
+
+      {/*
+        Confirming a guess needs its own control: the select already shows the
+        guessed category, and a <select> fires no change event when you pick the
+        option that is already selected — so "choose Receitas" on a row the app
+        already guessed as Receitas did nothing at all.
+      */}
+      {isGuess && currentId != null && currentName && (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => start(async () => setResult(await categorizeAllLike(fingerprint, currentId)))}
+          className="rounded border px-2 py-1 disabled:opacity-50"
+          style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}
+          title={`Confirmar ${currentName} e criar uma regra para lançamentos iguais`}
+        >
+          Confirmar {currentName}
+        </button>
       )}
 
       {showInternal && (

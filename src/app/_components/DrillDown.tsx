@@ -95,7 +95,12 @@ export function DrillDown({
                   </div>
 
                   <div className="mt-2">
-                    <CategoryPicker fingerprint={row.fingerprint} currentId={categoryId} />
+                    <CategoryPicker
+                      fingerprint={row.fingerprint}
+                      currentId={categoryId}
+                      currentName={title}
+                      isGuess={row.categorySource === 'default'}
+                    />
                   </div>
                 </li>
               ))}

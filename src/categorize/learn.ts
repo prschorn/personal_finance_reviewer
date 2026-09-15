@@ -30,6 +30,8 @@ export interface LearnResult {
   totalInstallments?: number | null;
   /** Narrower rules this one absorbed, e.g. one-per-installment rules made earlier. */
   superseded?: string[];
+  /** True when an existing rule for the same text was repointed, not created. */
+  updatedExisting?: boolean;
   reason?: string;
 }
 
@@ -165,6 +167,7 @@ export function learnCategoryFromTransaction(
     matched: countMatching(db, key),
     totalInstallments,
     superseded: superseded.map((r) => r.matchValue),
+    updatedExisting: !!existing,
   };
 }
 

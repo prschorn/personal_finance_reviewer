@@ -66,7 +66,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ a
 
       {pending.length > 0 && (
         <Link
-          href="/transactions?filtro=sem-categoria"
+          href="/transactions?filtro=sem-regra"
           className="mb-4 flex items-center gap-2 rounded border px-3 py-2 text-[13px]"
           style={{ borderColor: 'var(--warn)', background: 'var(--warn-soft)', color: 'var(--warn)' }}
         >

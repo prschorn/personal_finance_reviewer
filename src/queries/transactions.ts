@@ -4,7 +4,7 @@ import { getDb } from '../db/client';
 import { accounts, categories, transactions } from '../db/schema';
 import { normalize } from '../lib/text';
 
-export type TransactionFilter = 'todas' | 'sem-categoria' | 'nao-faturadas' | 'duplicadas';
+export type TransactionFilter = 'todas' | 'sem-regra' | 'nao-faturadas' | 'duplicadas';
 
 export interface TransactionListRow {
   id: string;
@@ -31,7 +31,8 @@ export function listTransactions(
   const search = normalize(opts.search ?? '');
 
   const conditions = [isNull(transactions.deletedAt)];
-  if (filter === 'sem-categoria') conditions.push(eq(transactions.categorySource, 'default'));
+  // 'default' = no rule claimed it, so the category on the row is the app's guess.
+  if (filter === 'sem-regra') conditions.push(eq(transactions.categorySource, 'default'));
   if (filter === 'nao-faturadas') conditions.push(eq(transactions.status, 'PENDING'));
   if (search) {
     const term = `%${search}%`;
@@ -117,7 +118,7 @@ export function countByFilter(db: DB = getDb()) {
 
   return {
     todas: count(),
-    'sem-categoria': count(eq(transactions.categorySource, 'default')),
+    'sem-regra': count(eq(transactions.categorySource, 'default')),
     'nao-faturadas': count(eq(transactions.status, 'PENDING')),
     duplicadas,
   };

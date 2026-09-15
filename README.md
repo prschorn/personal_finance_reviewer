@@ -6,6 +6,9 @@ this machine and renders two views:
 
 - **Mensal** — every category by month for a year, with the transactions behind
   any figure one click away.
+- **Painel** — income against spending month by month, and the biggest categories
+  over the same months. Both have a table view; hiding a series rescales the axis,
+  which is how you read the smaller categories when one large one flattens them.
 - **Cartões** — credit card spending by category, by card and by bill. Clicking a
   category opens the card transactions behind it, for the year or the single month
   on screen.
@@ -78,6 +81,17 @@ purchases at two banks stay distinct. Transfers between your own banks only beco
 detectable once both sides are connected. The one thing to avoid is connecting the
 *same* bank twice — Pluggy warns against it, and it would double-count.
 
+**"Sem regra" does not mean "no category".** It lists transactions no rule matched,
+where the category shown is the app's fallback guess — Outros for money out,
+Receitas for money in. Those rows do carry a category; the point is that nothing
+decided it, which is how an insurance refund ends up counted as income. Each row is
+marked `sem regra` so the guess is never mistaken for a decision.
+
+When the guess is right, **Confirmar** turns it into a rule. It exists as its own
+button because the dropdown already shows the guessed category, and a `<select>`
+fires no change event when you pick the option that is already selected — so
+choosing Receitas on a row already guessed as Receitas did nothing at all.
+
 **Categories come from local rules.** Pluggy's own categorization is a paid add-on
 and its generic categories would not produce *Marmitas* or *DARF* anyway. Rules live
 in `src/categorize/seed-rules.ts`; the first match wins, and a category you pick by
@@ -86,6 +100,26 @@ for review on the Mensal page.
 
 **Pending transactions are included**, so the current month is not understated.
 They are marked "não faturada" in the drill-down.
+
+## Charts
+
+The palette is the validated categorical theme from the data-viz method, not the
+app's own indigo and green: run through the validator, the indigo falls outside the
+lightness band and the green sits below the chroma floor (it reads gray). The
+semantically obvious green-for-income against orange-for-spending also fails —
+ΔE 3.2 under protanopia, indistinguishable to red-green colorblind readers. Blue
+and orange pass every check in both modes.
+
+Three hues in the seven-series palette sit below 3:1 against the light surface, so
+the relief rule applies and every chart ships a table view. Series colours are
+assigned per entity and never cycled: past six categories the rest fold into
+"Demais categorias" rather than inventing a hue, and hiding a series never repaints
+the ones that remain.
+
+Charts stop at the current month for the current year. Card installments are billed
+months ahead, so the tail of the year holds scheduled charges and no income —
+plotting it would drop the income line to zero and read as a collapse rather than as
+"it hasn't happened yet".
 
 ## Sync
 
@@ -134,7 +168,7 @@ assumed from the docs:
 
 ```bash
 npm run dev         # http://localhost:3000
-npm test            # 356 tests
+npm test            # 381 tests
 npm run typecheck
 npm run probe       # inspect the live Pluggy API, writes fixtures/
 npm run db:migrate

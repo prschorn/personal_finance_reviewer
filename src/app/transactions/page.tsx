@@ -9,14 +9,17 @@ export const dynamic = 'force-dynamic';
 
 const FILTERS: { key: TransactionFilter; label: string }[] = [
   { key: 'todas', label: 'Todas' },
-  { key: 'sem-categoria', label: 'Sem categoria' },
+  { key: 'sem-regra', label: 'Sem regra' },
   { key: 'nao-faturadas', label: 'Não faturadas' },
   { key: 'duplicadas', label: 'Possíveis duplicatas' },
 ];
 
 const EMPTY: Record<TransactionFilter, { title: string; body: string }> = {
   todas: { title: 'Nenhuma transação', body: 'Sincronize para buscar os dados das suas contas.' },
-  'sem-categoria': { title: 'Tudo categorizado', body: 'Nenhuma transação caiu em Outros por falta de regra.' },
+  'sem-regra': {
+    title: 'Toda transação tem uma regra',
+    body: 'Nenhum lançamento está usando a categoria padrão. Os números do Mensal vêm todos de regras ou de escolhas suas.',
+  },
   'nao-faturadas': { title: 'Nada em aberto', body: 'Todas as transações já foram faturadas pelo banco.' },
   duplicadas: { title: 'Nenhuma duplicata', body: 'Cada transação aparece uma única vez. Os totais são confiáveis.' },
 };
@@ -69,6 +72,15 @@ export default async function TransactionsPage({
         </form>
       </div>
 
+      {filter === 'sem-regra' && rows.length > 0 && (
+        <p className="mb-4 rounded border px-3 py-2 text-[13px]"
+          style={{ borderColor: 'var(--warn)', background: 'var(--warn-soft)', color: 'var(--warn)' }}>
+          Nenhuma regra combinou com estes lançamentos, então o app chutou: saídas foram para Outros e
+          entradas para Receitas. A categoria que aparece abaixo é esse chute — escolha a certa e o app
+          cria uma regra para todos os meses.
+        </p>
+      )}
+
       {filter === 'duplicadas' && counts.duplicadas > 0 && (
         <p className="mb-4 rounded border px-3 py-2 text-[13px]"
           style={{ borderColor: 'var(--warn)', background: 'var(--warn-soft)', color: 'var(--warn)' }}>
@@ -96,7 +108,14 @@ export default async function TransactionsPage({
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]" style={{ color: 'var(--ink-faint)' }}>
                 <span className="tnum">{row.postedOn.split('-').reverse().join('/')}</span>
                 <span>{row.accountName ?? row.accountType}</span>
-                {row.categoryName && <span>{row.categoryName}</span>}
+                {row.categoryName && (
+                  <span>
+                    {row.categoryName}
+                    {row.categorySource === 'default' && (
+                      <span style={{ color: 'var(--warn)' }}> · sem regra</span>
+                    )}
+                  </span>
+                )}
                 {row.installment && <span className="tnum">parcela {row.installment}</span>}
                 {row.status === 'PENDING' && <span style={{ color: 'var(--warn)' }}>não faturada</span>}
                 {row.isInternal && <span style={{ color: 'var(--accent)' }}>transferência, fora dos totais</span>}
@@ -104,7 +123,13 @@ export default async function TransactionsPage({
               </div>
 
               <div className="mt-2">
-                <CategoryPicker fingerprint={row.fingerprint} currentId={row.categoryId} showInternal={!row.isInternal} />
+                <CategoryPicker
+                  fingerprint={row.fingerprint}
+                  currentId={row.categoryId}
+                  currentName={row.categoryName}
+                  isGuess={row.categorySource === 'default'}
+                  showInternal={!row.isInternal}
+                />
               </div>
             </li>
           ))}

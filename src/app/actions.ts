@@ -131,7 +131,11 @@ export async function categorizeAllLike(
       ? ` ${matched - applied} não mudaram: veja em Transferências ou Regras.`
       : '';
 
-  return { ok: true, message: `${what} de "${key}" categorizados, em todos os meses.${tidied}${partial}` };
+  // Repointing an existing rule reaches everything that rule already covered,
+  // which is a larger blast radius than adding one.
+  const repointed = learned.updatedExisting ? ' Uma regra que já existia foi apontada para esta categoria.' : '';
+
+  return { ok: true, message: `${what} de "${key}" categorizados, em todos os meses.${tidied}${partial}${repointed}` };
 }
 
 /**

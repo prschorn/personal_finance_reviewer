@@ -477,3 +477,68 @@ describe('removing and disabling rules', () => {
     expect(categoryOf(db, id)).toBe('Transferências internas');
   });
 });
+
+describe('confirming the app guess', () => {
+  /**
+   * A guessed category is shown in the dropdown already, so picking the same
+   * option fires no change event and nothing happens. Confirming has to be its
+   * own action, and it has to turn the guess into a decision.
+   */
+  it('turns a fallback into a rule, so it leaves the review list', () => {
+    const db = freshDb();
+    const id = addTx(db, 'Transferência Recebida|ALGUEM QUALQUER', '2026-09-01', 130755);
+    recategorizeAll(db);
+
+    const before = db.select().from(transactions).where(eq(transactions.id, id)).get()!;
+    expect(before.categorySource).toBe('default');
+    expect(categoryOf(db, id)).toBe('Receitas');
+
+    // Confirming re-applies the category the app had guessed.
+    learnCategoryFromTransaction(db, `fp-${id}`, before.categoryId!);
+    recategorizeAll(db);
+
+    const after = db.select().from(transactions).where(eq(transactions.id, id)).get()!;
+    expect(after.categorySource).toBe('rule');
+    expect(categoryOf(db, id)).toBe('Receitas');
+  });
+
+  it('covers everything with the same description, not just the row confirmed', () => {
+    const db = freshDb();
+    const a = addTx(db, 'Pix recebido RECEITA CERTA NOTA GAUCHA', '2026-05-13', 560);
+    const b = addTx(db, 'Pix recebido RECEITA CERTA NOTA GAUCHA', '2026-08-13', 1120);
+    recategorizeAll(db);
+
+    const guess = db.select().from(transactions).where(eq(transactions.id, a)).get()!;
+    learnCategoryFromTransaction(db, `fp-${a}`, guess.categoryId!);
+    recategorizeAll(db);
+
+    for (const id of [a, b]) {
+      expect(db.select().from(transactions).where(eq(transactions.id, id)).get()!.categorySource).toBe('rule');
+    }
+  });
+
+  // Two user rules cannot share a match value — the first would always win — so
+  // confirming repoints the existing one. That reaches more than the row clicked.
+  it('reports when it repointed a rule that already existed', () => {
+    const db = freshDb();
+    db.insert(rules).values({
+      priority: USER_RULE_PRIORITY, name: 'ALGUM LUGAR', matchField: 'search_text',
+      matchType: 'contains', matchValue: 'ALGUM LUGAR',
+      setCategoryId: catId(db, 'Mercado'), origin: 'user',
+    }).run();
+    const id = addTx(db, 'ALGUM LUGAR', '2026-09-01', -5000);
+
+    const res = learnCategoryFromTransaction(db, `fp-${id}`, catId(db, 'Restaurante'));
+    recategorizeAll(db);
+
+    expect(res.updatedExisting).toBe(true);
+    expect(categoryOf(db, id)).toBe('Restaurante');
+    expect(db.select().from(rules).where(eq(rules.origin, 'user')).all()).toHaveLength(1);
+  });
+
+  it('flags creating a fresh rule as not a repoint', () => {
+    const db = freshDb();
+    const id = addTx(db, 'ZZZ ALGO INEDITO', '2026-09-01', -5000);
+    expect(learnCategoryFromTransaction(db, `fp-${id}`, catId(db, 'Compras')).updatedExisting).toBe(false);
+  });
+});
