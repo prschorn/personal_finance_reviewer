@@ -319,7 +319,7 @@ describe('a broad earlier rule must not shadow a precise later one', () => {
   it('lets the more specific rule win even though it was created later', () => {
     const db = freshDb();
     withBroadRule(db);
-    const id = addTx(db, 'Transferência Recebida|SCHORN CONSULTORIA DE TECNOLOGIA DA INFORMACAO LTDA', '2026-09-05', 2250000);
+    const id = addTx(db, 'Transferência Recebida|ACME CONSULTORIA DE TECNOLOGIA DA INFORMACAO LTDA', '2026-09-05', 1000000);
     recategorizeAll(db);
     expect(categoryOf(db, id)).toBe('Transferências internas'); // the broad rule, before the fix
 
@@ -332,20 +332,20 @@ describe('a broad earlier rule must not shadow a precise later one', () => {
   it('leaves the broad rule working for everything else', () => {
     const db = freshDb();
     withBroadRule(db);
-    const schorn = addTx(db, 'Transferência Recebida|SCHORN CONSULTORIA DE TECNOLOGIA DA INFORMACAO LTDA', '2026-09-05', 2250000);
+    const acme = addTx(db, 'Transferência Recebida|ACME CONSULTORIA DE TECNOLOGIA DA INFORMACAO LTDA', '2026-09-05', 1000000);
     const other = addTx(db, 'Transferência Recebida|FULANO DE TAL', '2026-09-06', 50000);
 
-    learnCategoryFromTransaction(db, `fp-${schorn}`, catId(db, 'PJ'));
+    learnCategoryFromTransaction(db, `fp-${acme}`, catId(db, 'PJ'));
     recategorizeAll(db);
 
-    expect(categoryOf(db, schorn)).toBe('PJ');
+    expect(categoryOf(db, acme)).toBe('PJ');
     expect(categoryOf(db, other)).toBe('Transferências internas');
   });
 
   it('keeps both rules rather than deleting the broad one', () => {
     const db = freshDb();
     withBroadRule(db);
-    const id = addTx(db, 'Transferência Recebida|SCHORN CONSULTORIA DE TECNOLOGIA DA INFORMACAO LTDA', '2026-09-05', 2250000);
+    const id = addTx(db, 'Transferência Recebida|ACME CONSULTORIA DE TECNOLOGIA DA INFORMACAO LTDA', '2026-09-05', 1000000);
     learnCategoryFromTransaction(db, `fp-${id}`, catId(db, 'PJ'));
     expect(db.select().from(rules).where(eq(rules.origin, 'user')).all()).toHaveLength(2);
   });
@@ -464,13 +464,13 @@ describe('removing and disabling rules', () => {
       matchType: 'contains', matchValue: 'TRANSFERENCIA RECEBIDA',
       setCategoryId: catId(db, 'Transferências internas'), origin: 'user',
     }).run();
-    const id = addTx(db, 'Transferência Recebida|SCHORN CONSULTORIA DE TECNOLOGIA', '2026-09-05', 2250000);
+    const id = addTx(db, 'Transferência Recebida|ACME CONSULTORIA DE TECNOLOGIA', '2026-09-05', 1000000);
     learnCategoryFromTransaction(db, `fp-${id}`, catId(db, 'PJ'));
     recategorizeAll(db);
     expect(categoryOf(db, id)).toBe('PJ');
 
     const specific = db.select().from(rules)
-      .where(and(eq(rules.origin, 'user'), eq(rules.matchValue, 'TRANSFERENCIA RECEBIDA|SCHORN CONSULTORIA DE TECNOLOGIA'))).get()!;
+      .where(and(eq(rules.origin, 'user'), eq(rules.matchValue, 'TRANSFERENCIA RECEBIDA|ACME CONSULTORIA DE TECNOLOGIA'))).get()!;
     deleteUserRule(db, specific.id);
     recategorizeAll(db);
 

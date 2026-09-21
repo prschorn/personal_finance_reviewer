@@ -112,7 +112,7 @@ function buildContext(db: DB, structural: ReadonlyMap<string, StructuralFinding>
     //
     // The specificity tiebreak matters because every rule you create sits at the
     // same priority. Without it, an early broad rule ("TRANSFERENCIA RECEBIDA")
-    // permanently shadows a later precise one ("TRANSFERENCIA RECEBIDA|SCHORN
+    // permanently shadows a later precise one ("TRANSFERENCIA RECEBIDA|ACME
     // CONSULTORIA…"), and categorizing that transaction silently does nothing.
     // A longer match value is the more specific one, so it goes first.
     rules: db

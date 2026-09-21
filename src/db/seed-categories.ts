@@ -25,11 +25,10 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   { name: 'Bateria', kind: 'expense' },
   { name: 'Celular', kind: 'expense' },
   { name: 'Internet', kind: 'expense' },
-  { name: 'Contador', kind: 'expense' },
   { name: 'Nutricionista', kind: 'expense' },
   { name: 'Bruno', kind: 'expense' },
   { name: 'Marmitas', kind: 'expense' },
-  { name: 'Unimed', kind: 'expense' },
+  
   { name: 'Psiquiatra', kind: 'expense' },
   { name: 'Saúde', kind: 'expense' },
   { name: 'Compras', kind: 'expense' },
@@ -47,7 +46,6 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   { name: 'Imposto', kind: 'expense' },
 
   // Added by this app
-  { name: 'Dinheiro', kind: 'expense' }, // ATM withdrawals are real spending, never internal
   { name: 'Outros', kind: 'expense' }, // default bucket for unmatched money-out
 
   // Income. `PJ` is the spreadsheet's word for consultancy revenue.

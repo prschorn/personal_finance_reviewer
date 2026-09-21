@@ -183,7 +183,7 @@ describe('review queue', () => {
 
   it('still excludes anything a rule already classified', () => {
     const db = freshDb();
-    addTx(db, { postedOn: '2026-03-10', signedCents: 2250000, category: 'PJ', categorySource: 'rule', description: 'SCHORN CONSULTORIA' });
+    addTx(db, { postedOn: '2026-03-10', signedCents: 1000000, category: 'PJ', categorySource: 'rule', description: 'ACME CONSULTORIA' });
     expect(getUncategorized(db)).toEqual([]);
   });
 
@@ -241,14 +241,14 @@ describe('default year', () => {
 describe('income and balance', () => {
   it('counts income from income-kind categories', () => {
     const db = freshDb();
-    addTx(db, { postedOn: '2026-03-05', signedCents: 2250000, category: 'PJ' });
+    addTx(db, { postedOn: '2026-03-05', signedCents: 1000000, category: 'PJ' });
     addTx(db, { postedOn: '2026-03-10', signedCents: -50000, category: 'Mercado' });
 
     const m = getMatrix(db, 2026);
 
-    expect(m.incomeTotals[2]).toBe(2250000);
+    expect(m.incomeTotals[2]).toBe(1000000);
     expect(m.monthTotals[2]).toBe(50000);
-    expect(m.balanceTotals[2]).toBe(2200000);
+    expect(m.balanceTotals[2]).toBe(950000);
   });
 
   // The finding that drove this design: money arriving on an EXPENSE category is a
@@ -300,7 +300,7 @@ describe('income and balance', () => {
 
   it('keeps income out of the expense rows', () => {
     const db = freshDb();
-    addTx(db, { postedOn: '2026-03-05', signedCents: 2250000, category: 'PJ' });
+    addTx(db, { postedOn: '2026-03-05', signedCents: 1000000, category: 'PJ' });
     const m = getMatrix(db, 2026);
     expect(m.rows.map((r) => r.name)).not.toContain('PJ');
     expect(m.grandTotal).toBe(0);

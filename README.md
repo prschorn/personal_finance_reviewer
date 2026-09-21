@@ -42,6 +42,11 @@ Fill in `PLUGGY_CLIENT_ID` and `PLUGGY_CLIENT_SECRET`. On the free tier Pluggy d
 not let the API list your connections, so paste each connection's id into
 `PLUGGY_ITEM_IDS` (or add them later under Ajustes).
 
+If consultancy revenue arrives as a plain transfer, put the payer's name in
+`PJ_PAYERS` (comma-separated). That seeds a rule ahead of every other money-in
+rule, so the income is never swallowed by a generic transfer heuristic. The names
+stay in `.env.local` rather than in the repo, for the same reason your CPF does.
+
 ```bash
 npm run dev
 ```

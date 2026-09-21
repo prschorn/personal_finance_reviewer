@@ -39,7 +39,7 @@ describe('the "sem regra" filter', () => {
 
   it('excludes anything a rule or a person decided', () => {
     const db = freshDb();
-    addTx(db, { description: 'SCHORN CONSULTORIA', signedCents: 2250000, category: 'PJ', categorySource: 'rule' });
+    addTx(db, { description: 'ACME CONSULTORIA', signedCents: 1000000, category: 'PJ', categorySource: 'rule' });
     addTx(db, { description: 'ESCOLHIDO A MAO', signedCents: -900, category: 'Mercado', categorySource: 'manual' });
     addTx(db, { description: 'DICA DA PLUGGY', signedCents: -800, category: 'Mercado', categorySource: 'pluggy' });
 

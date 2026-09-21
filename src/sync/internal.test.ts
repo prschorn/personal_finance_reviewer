@@ -122,8 +122,8 @@ describe('own transfer pairing', () => {
 
   it('pairs on the user own name appearing as the counterparty', () => {
     const db = freshDb();
-    const own: OwnIdentifiers = { documents: [], pixKeys: [], nameFragments: ['PAULO'] };
-    const out = addTx(db, { accountId: 'acc-bank', signedCents: -50000, description: 'ENVIO', receiverName: 'Paulo Schorn' });
+    const own: OwnIdentifiers = { documents: [], pixKeys: [], nameFragments: ['FULANO'] };
+    const out = addTx(db, { accountId: 'acc-bank', signedCents: -50000, description: 'ENVIO', receiverName: 'Fulano de Tal' });
     addTx(db, { accountId: 'acc-bank2', signedCents: 50000, description: 'ENTRADA' });
     expect(detectInternal(db, own).findings.has(out)).toBe(true);
   });

@@ -73,7 +73,7 @@ export function SettingsForms({ own }: { own: OwnIdentifiers }) {
             <input
               name="nameFragments"
               defaultValue={own.nameFragments.join(', ')}
-              placeholder="PAULO"
+              placeholder="FULANO"
               className="mt-1 w-full rounded border px-2.5 py-1.5 text-[13px]"
               style={field}
             />

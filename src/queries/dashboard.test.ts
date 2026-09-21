@@ -31,7 +31,7 @@ describe('monthsToPlot', () => {
 describe('income versus spending', () => {
   it('produces exactly two series, in fixed slots', () => {
     const db = freshDb();
-    addTx(db, { postedOn: '2026-03-05', signedCents: 2250000, category: 'PJ' });
+    addTx(db, { postedOn: '2026-03-05', signedCents: 1000000, category: 'PJ' });
     addTx(db, { postedOn: '2026-03-10', signedCents: -50000, category: 'Mercado' });
 
     const d = buildDashboard(getMatrix(db, 2026), DEC);
@@ -39,7 +39,7 @@ describe('income versus spending', () => {
     expect(d.incomeVsSpending.map((s) => s.name)).toEqual(['Receitas', 'Gastos']);
     expect(d.incomeVsSpending[0]!.slot).toBe(0);
     expect(d.incomeVsSpending[1]!.slot).toBe(1);
-    expect(d.incomeVsSpending[0]!.values[2]).toBe(2250000);
+    expect(d.incomeVsSpending[0]!.values[2]).toBe(1000000);
     expect(d.incomeVsSpending[1]!.values[2]).toBe(50000);
   });
 

@@ -46,19 +46,13 @@ export const SEED_RULES: SeedRule[] = [
   { priority: 32, name: 'IPTU', category: 'IPTU', matchValue: 'IPTU' },
   { priority: 33, name: 'IPVA', category: 'IPVA', matchType: 'regex', matchValue: '\\b(IPVA|LICENCIAMENTO|DETRAN)\\b' },
   { priority: 34, name: 'Tarifas bancárias', category: 'Taxas', matchType: 'regex', matchValue: '\\b(IOF)\\b|\\b(TARIFA|ANUIDADE|JUROS|MULTA|ENCARGOS)' },
-  { priority: 35, name: 'Saque', category: 'Dinheiro', matchType: 'regex', matchValue: '\\bSAQUE\\b' },
 
   // -- 50-69: recurring, named counterparties ------------------------------
   { priority: 50, name: 'Condomínio', category: 'Condomínio', matchValue: 'CONDOMINIO' },
-  { priority: 51, name: 'Unimed', category: 'Unimed', matchValue: 'UNIMED' },
   { priority: 52, name: 'Energia elétrica', category: 'Luz', matchType: 'regex', matchValue: '\\b(ENEL|LIGHT SERVICOS|CEMIG|COPEL|CPFL|ELETROPAULO|CELESC|CEEE|NEOENERGIA|EQUATORIAL)\\b' },
   { priority: 53, name: 'Telefonia', category: 'Celular', matchType: 'regex', matchValue: '\\b(VIVO|CLARO|TIM BRASIL|TIM S|OI MOVEL|NEXTEL)\\b' },
   { priority: 54, name: 'Internet', category: 'Internet', matchType: 'regex', matchValue: '\\b(CLEAN NET)\\b' },
   { priority: 55, name: 'Marmitas', category: 'Marmitas', matchType: 'regex', matchValue: '\\b(MARMITA|LIVEFIT|LIVE FIT|FIT FOOD|LIGHT FOOD)' },
-
-  // Ahead of everything else on the money-in side: this is the main income source,
-  // and it should never be at the mercy of a generic transfer heuristic.
-  { priority: 20, name: 'Receita PJ (Schorn Consultoria)', category: 'PJ', direction: 'in', matchValue: 'SCHORN CONSULTORIA' },
 
   { priority: 60, name: 'Salário e recebimentos', category: 'Receitas', direction: 'in', matchType: 'regex', matchValue: '\\b(SALARIO|PRO ?LABORE|REMUNERACAO|RENDIMENTO|PAGAMENTO DE CLIENTE)' },
 
@@ -92,6 +86,28 @@ export const SEED_RULES: SeedRule[] = [
   { priority: 151, name: 'Hospedagem', category: 'Viagem', matchType: 'regex', matchValue: '\\b(AIRBNB|BOOKING|HOTEL|POUSADA|HURB)|\\bCVC\\b' },
 ];
 
+/**
+ * The payer behind PJ revenue, matched by name.
+ *
+ * A real counterparty, so it is seeded from PJ_PAYERS (comma-separated) rather than
+ * living in the repo — the same reasoning as config/own.ts. Priority 20 puts it ahead
+ * of everything else on the money-in side: the main income source should never be at
+ * the mercy of a generic transfer heuristic.
+ */
+export function pjPayerRules(env: NodeJS.ProcessEnv = process.env): SeedRule[] {
+  return (env.PJ_PAYERS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((payer, i) => ({
+      priority: 20 + i,
+      name: `Receita PJ (${payer})`,
+      category: 'PJ',
+      direction: 'in' as const,
+      matchValue: payer.toUpperCase(),
+    }));
+}
+
 export interface SeedRulesResult {
   inserted: number;
   skippedUnknownCategory: string[];
@@ -101,12 +117,12 @@ export interface SeedRulesResult {
  * Idempotent: matches on rule name, so re-running adds only what's new and never
  * clobbers a rule the user has edited.
  */
-export function seedRules(db: DB = getDb()): SeedRulesResult {
+export function seedRules(db: DB = getDb(), env: NodeJS.ProcessEnv = process.env): SeedRulesResult {
   const byName = new Map(db.select().from(categories).all().map((c) => [c.name, c.id]));
   const result: SeedRulesResult = { inserted: 0, skippedUnknownCategory: [] };
 
   db.transaction((tx) => {
-    for (const seed of SEED_RULES) {
+    for (const seed of [...SEED_RULES, ...pjPayerRules(env)]) {
       if (tx.select().from(rules).where(eq(rules.name, seed.name)).get()) continue;
 
       let categoryId: number | null = null;

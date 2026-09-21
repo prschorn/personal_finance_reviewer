@@ -16,3 +16,6 @@ src/config/own.local.ts
 # Captured API payloads (contain real financial data)
 fixtures/raw/
 fixtures/probe-report.txt
+
+# macOS
+.DS_Store
