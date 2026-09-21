@@ -1,0 +1,24 @@
+# Build context: everything the image does not need.
+node_modules/
+.next/
+.git/
+.github/
+.claude/
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+
+# Secrets stay out of the image — they arrive at runtime via env_file.
+.env
+.env.local
+
+# Captured API payloads (real financial data, not needed to run)
+fixtures/
+
+# Shared-memory file is tied to a live connection; the .db + -wal are enough.
+db/*-shm
+
+# Docs and tests
+README.md
+**/*.test.ts
+**/*.test.tsx

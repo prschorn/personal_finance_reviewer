@@ -55,6 +55,43 @@ Open http://localhost:3000, then **Sincronizar**. Fill in your CPF/CNPJ under
 Ajustes — that is what lets the app recognise transfers between your own accounts
 instead of guessing from descriptions.
 
+## Running it as a container
+
+For everyday use the app runs in Docker (OrbStack on this machine) so it is always
+up, without a terminal left open on `npm run dev`.
+
+```bash
+npm run db:checkpoint      # fold the WAL back into db/finance.db
+docker compose build
+docker compose up -d
+```
+
+Open http://localhost:3000. That is the same port `npm run dev` uses, so stop one
+before starting the other.
+
+`restart: unless-stopped` means the container comes back after a crash and starts
+again on its own whenever OrbStack starts — nothing to launch by hand.
+
+**There is only one database.** `db/` is bind-mounted at `/data`, so the container
+and `npm run dev` read and write the very same `db/finance.db`. Sync inside the
+container and the repo sees it immediately, and the other way round. Backups are
+just that file; `docker compose build` never touches it.
+
+Running both at once is not the intended use — they collide on port 3000 first —
+but it is safe if you do: SQLite's WAL mode coordinates writers correctly across
+the bind mount.
+
+The image also carries a snapshot of `db/` for a machine that has none. It is only
+restored when `/data` comes up empty, so on this machine it never applies. That is
+also what `npm run db:checkpoint` is for: SQLite keeps recent writes in a side file
+(`finance.db-wal`), and checkpointing folds them back in so the snapshot going into
+the image is complete. It refuses to run while something else is writing — stop the
+dev server first.
+
+Credentials are not baked into the image; Compose reads them from `.env.local` at
+start, so editing that file and running `docker compose up -d` is enough to pick
+up new ones.
+
 ## How the numbers work
 
 **Card purchases are itemized.** A supermarket run on the Nubank card counts under
@@ -293,6 +330,8 @@ npm test            # 515 tests
 npm run typecheck
 npm run probe       # inspect the live Pluggy API, writes fixtures/
 npm run db:migrate
+npm run db:checkpoint   # fold the SQLite WAL back into db/finance.db
+docker compose up -d    # run it as a container, see below
 ```
 
 To look at the UI without real data:

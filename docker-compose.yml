@@ -1,0 +1,28 @@
+services:
+  financas:
+    build:
+      context: .
+    image: personal-finance-reviewer:latest
+    container_name: financas
+    # Starts by itself whenever OrbStack is running — no manual `npm run dev`.
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      # Pluggy credentials and PJ_PAYERS. Kept out of the image on purpose.
+      - path: .env.local
+        required: false
+    environment:
+      # Overrides .env.local: /data is where db/ is mounted, so the container
+      # never falls back to the snapshot baked into the image.
+      FINANCE_DB_PATH: /data/finance.db
+    volumes:
+      # The repo's db/ IS the container's database directory, so `npm run dev`
+      # and the container read and write the exact same finance.db.
+      - ./db:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3

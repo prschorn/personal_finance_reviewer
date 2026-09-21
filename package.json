@@ -12,7 +12,10 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "probe": "tsx src/scripts/probe.ts"
+    "probe": "tsx src/scripts/probe.ts",
+    "db:checkpoint": "node scripts/checkpoint-db.mjs",
+    "docker:build": "npm run db:checkpoint && docker compose build",
+    "docker:up": "docker compose up -d"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
